@@ -818,10 +818,14 @@
           <label>Category</label>
           <select id="f-category">
             <option>ECDSA Nonce Reuse</option>
-            <option>Weak/Predictable Randomness</option>
-            <option>Replay Vulnerability</option>
-            <option>Signature Malleability</option>
+            <option>Weak/Predictable Randomness (unverified -- stake only)</option>
+            <option>Replay Vulnerability (unverified -- stake only)</option>
+            <option>Signature Malleability (unverified -- stake only)</option>
           </select>
+          <p class="hint" style="margin-top:4px;">Only <b>ECDSA Nonce Reuse</b> is checked on-chain by
+            <code>reveal()</code> -- the math either proves the key produced two conflicting
+            signatures or it doesn't. The other categories have no equivalent deterministic check yet,
+            so they're marked unverified; a buyer there is trusting the seller's 10% stake, not math.</p>
         </div>
         <div class="grow">
           <label>Severity (display only)</label>
@@ -839,6 +843,10 @@
       <p class="hint">
         Only <code>keccak256(finding)</code> is submitted now. The full text is only ever sent
         on-chain later, inside <code>reveal()</code>, after a buyer has paid.
+      </p>
+      <p id="banNotice" class="hint" style="display:none;color:#b42318;font-weight:600;">
+        This address has 2 failed reveals and is permanently banned from creating new listings on
+        CipherMarket (enforced on-chain in <code>createListing</code>, not just this UI).
       </p>
       <button class="primary" id="createListingBtn">Create Listing</button>
     </div>
@@ -1095,7 +1103,8 @@ document.querySelectorAll('.tabs button').forEach(btn => {
 
 // ---------- contract address persistence ----------
 const addrInput = document.getElementById('contractAddr');
-addrInput.value = localStorage.getItem('bbb_contract_address') || '';
+const DEFAULT_CONTRACT_ADDRESS = '0x83231B074245eBfCe03A2E804A35a621DBB9FAD8'; // Sepolia, verified
+addrInput.value = localStorage.getItem('bbb_contract_address') || DEFAULT_CONTRACT_ADDRESS;
 updateContractPill();
 document.getElementById('saveAddrBtn').addEventListener('click', () => {
   const v = addrInput.value.trim();
@@ -1141,6 +1150,8 @@ async function refreshWalletState() {
     copyBtn.hidden = true;
     document.getElementById('netPill').classList.remove('online');
     document.getElementById('connectBtn').textContent = 'Connect Wallet';
+    document.getElementById('banNotice').style.display = 'none';
+    document.getElementById('createListingBtn').disabled = false;
     updateDebugStatus();
     return;
   }
@@ -1260,8 +1271,23 @@ function initContract() {
     contract = new ethers.Contract(addr, window.BLACKBOX_ABI, signer);
     setupActivityFeed(contract);
     rearmPendingSellerReveals();
+    refreshBanStatus();
   } catch (e) {
     console.error(e);
+  }
+}
+
+// ---------- strike system: 2 failed reveals bans an address from listing ----------
+async function refreshBanStatus() {
+  const notice = document.getElementById('banNotice');
+  const btn = document.getElementById('createListingBtn');
+  if (!contract || !currentAddress) { notice.style.display = 'none'; btn.disabled = false; return; }
+  try {
+    const banned = await contract.isBanned(currentAddress);
+    notice.style.display = banned ? 'block' : 'none';
+    btn.disabled = banned;
+  } catch (e) {
+    console.error('isBanned check failed', e);
   }
 }
 

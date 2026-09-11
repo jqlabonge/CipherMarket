@@ -227,6 +227,19 @@ window.BLACKBOX_ABI = [
   },
   {
     "inputs": [],
+    "name": "MAX_STRIKES",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "REVEAL_WINDOW",
     "outputs": [
       {
@@ -434,6 +447,25 @@ window.BLACKBOX_ABI = [
         "internalType": "struct BlackBoxBazaar.Listing",
         "name": "",
         "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "seller",
+        "type": "address"
+      }
+    ],
+    "name": "isBanned",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",

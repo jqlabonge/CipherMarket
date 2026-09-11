@@ -1,12 +1,29 @@
 # The Black Box Bazaar
 
-An on-chain marketplace for **cryptographic vulnerability disclosure**. A security
-researcher (seller) has found a real, checkable cryptographic weakness in a target
-account's signing process and wants to sell the finding to the affected wallet
-(buyer) without revealing it up front. The flagship, fully-implemented vulnerability
-class is **ECDSA nonce reuse** -- unlike most vulnerability classes, "did this seller
-actually find a nonce-reuse bug against this target" has a deterministic
-mathematical answer the contract itself can check with nothing but `ecrecover`.
+An on-chain marketplace for buying and selling **cybersecurity risk**: specifically,
+**cryptographic vulnerability disclosure**. The product being sold here isn't a
+generic "info drop" wearing a security-themed label -- it's a specific class of
+security finding (a live, exploitable weakness in how a wallet signs transactions),
+sold through a mechanism built around how real vulnerability disclosure actually
+works: a researcher (seller) has found a real, checkable cryptographic weakness in a
+target account's signing process and wants to get paid by the affected wallet
+(buyer) for it, without handing over the exploitable details for free before payment
+clears -- the same "responsible disclosure vs. pay first" tension that shows up in
+real bug-bounty and vulnerability-broker markets, just enforced by a contract instead
+of a middleman's reputation. The flagship, fully-implemented vulnerability class is
+**ECDSA nonce reuse** -- unlike most vulnerability classes, "did this seller actually
+find a nonce-reuse bug against this target" has a deterministic mathematical answer
+the contract itself can check with nothing but `ecrecover`. That's the whole point of
+this design: a cybersecurity marketplace is only as trustworthy as its ability to
+tell a real exploit from a bluff *before* money moves, and here that ability isn't a
+policy or a moderator, it's a math check anyone can re-run.
+
+## Deployed contract (Ethereum Sepolia)
+
+- **Address:** `0x83231B074245eBfCe03A2E804A35a621DBB9FAD8`
+- **Chain:** Ethereum Sepolia testnet, chain ID `11155111`
+- **Block explorer (verified source):** https://sepolia.etherscan.io/address/0x83231B074245eBfCe03A2E804A35a621DBB9FAD8#code
+- **Live app:** https://jqlabonge.github.io/CipherMarket/ (this address is the frontend's default -- no setup needed to browse or connect)
 
 ## How it works
 
@@ -31,6 +48,40 @@ mathematical answer the contract itself can check with nothing but `ecrecover`.
 
 No off-chain oracle and no human referee are involved -- `ecrecover` is the entire
 trust mechanism.
+
+## Disputes: there aren't any
+
+A normal marketplace needs a dispute process because "did the buyer actually get
+what they paid for" is a judgment call somebody has to make after the fact. Here it
+isn't a judgment call -- it's a hard on-chain precondition of the money moving at
+all. `reveal()` is the only path payment can take: if the two signatures don't both
+`ecrecover` to `targetAccount` over two different messages, the transaction doesn't
+pay the seller, full stop -- the buyer is refunded and the seller's stake is slashed
+to them automatically, in the same function call. There is no state where a payout
+happens and *then* someone has to decide whether it was deserved. So buying a
+listing isn't "trust the seller and hope" -- it's paying the contract to run the
+verification for you: your purchase is what puts the finding in front of the
+`ecrecover` check, and you either get a mathematically proven finding or your money
+back plus the seller's stake. That's the trade being sold: not the finding itself,
+but a transaction that cannot resolve in your favor unless the finding is real.
+
+## Reputation and the strike system
+
+Every seller address has an on-chain record (`reputationOf`) of how many of its
+reveals were `verified` vs. `failed`, shown on every listing as a reputation score
+and queryable directly via `reputationScoreBps()`. On top of that, `MAX_STRIKES = 2`:
+once an address has accumulated 2 failed reveals -- bad math, a finding that doesn't
+match its own commitment, or simply never revealing before the deadline -- it is
+**permanently banned from creating new listings**, enforced inside `createListing()`
+itself (`require(reputationOf[msg.sender].failed < MAX_STRIKES, ...)`), not just
+hidden by the frontend. A banned address can still be revealed against, cancel, or
+receive purchases  on anything already listed, it just can never post anything new.
+Two strikes and you're out of the marketplace, permanently, with no admin override --
+which is also why nobody is exposed to buying an already-publicly-known issue at a
+premium: an inflated or recycled claim either passes the `ecrecover` check (in which
+case it's genuinely proof of that target's key, regardless of how "well-known" the
+underlying bug class is) or it fails and the seller is one strike closer to a
+lifetime ban, so there's a real, escalating cost to listing anything that isn't real.
 
 ## Why this verifies cleanly
 
@@ -86,7 +137,13 @@ This implements one deterministic predicate: shared-`r` ECDSA nonce reuse. Other
 categories the data model allows as free-text (weak randomness, replay bugs,
 signature malleability) don't have an implemented on-chain check in this MVP --
 extending real, oracle-free verification to those would mean implementing each
-one's own specific math/protocol check individually.
+one's own specific math/protocol check individually. The frontend deliberately
+labels those other categories "unverified -- stake only" in the listing form so a
+buyer never mistakes them for something `ecrecover` actually checked; the strike
+system (above) is what stands in for verification there, since an unverified,
+low-quality, or bad-faith listing in those categories still counts as a failed
+reveal against the seller's two-strike limit the moment a buyer forces a reveal
+that doesn't hold up.
 
 ## Repo layout
 
@@ -149,15 +206,20 @@ buyer is refunded price + stake.
 
 ## Deploying to Sepolia
 
+Already deployed at the address above -- the frontend defaults to it, so this is
+only needed to redeploy your own copy:
+
 ```bash
 cd hardhat
 npm install
 cp .env.example .env        # fill in SEPOLIA_RPC_URL and PRIVATE_KEY (testnet funds only!)
 npx hardhat run scripts/deploy.js --network sepolia
+npx hardhat verify --network sepolia <printed address>
 ```
 
 Paste the printed address into the frontend's "Deployed BlackBoxBazaar address"
-field. Chain: Ethereum Sepolia (`11155111`). Explorer:
+field (or update `DEFAULT_CONTRACT_ADDRESS` in `frontend/index.html`). Chain:
+Ethereum Sepolia (`11155111`). Explorer:
 `https://sepolia.etherscan.io/address/<contract address>`.
 
 Base Sepolia is also configured in `hardhat.config.js` as an alternative --

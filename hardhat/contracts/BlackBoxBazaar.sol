@@ -89,6 +89,16 @@ contract BlackBoxBazaar {
     uint256 public constant REVEAL_WINDOW = 1 hours;
     uint256 public constant STAKE_BPS = 1000; // seller stakes 10% of price
 
+    /// @notice Strike system: a seller whose reveal fails (bad math, mismatched
+    ///         commitment, or a timed-out listing) racks up a strike via
+    ///         `reputationOf[seller].failed`. `MAX_STRIKES` failed reveals and the
+    ///         address is permanently blocked from creating new listings -- it can
+    ///         still cancel/finish anything already in flight, it just can't post
+    ///         anything new. This is enforced in `createListing` itself, not just
+    ///         the frontend, so it can't be bypassed by talking to the contract
+    ///         directly.
+    uint256 public constant MAX_STRIKES = 2;
+
     // --- Reentrancy guard ---
     // Every state-changing function that moves ETH already follows
     // checks-effects-interactions (status flips to a terminal state before the
@@ -164,6 +174,7 @@ contract BlackBoxBazaar {
     ) external payable returns (uint256 id) {
         require(targetAccount != address(0), "bad target");
         require(price > 0, "price must be > 0");
+        require(reputationOf[msg.sender].failed < MAX_STRIKES, "seller banned: too many failed reveals");
         uint256 requiredStake = (price * STAKE_BPS) / 10000;
         require(msg.value == requiredStake, "must stake 10% of price");
 
@@ -308,5 +319,11 @@ contract BlackBoxBazaar {
         uint256 total = uint256(rep.verified) + uint256(rep.failed);
         if (total == 0) return 10000; // no history yet -- display as neutral 100%
         return (uint256(rep.verified) * 10000) / total;
+    }
+
+    /// @notice True once a seller has hit MAX_STRIKES failed reveals and is
+    ///         permanently blocked from creating new listings.
+    function isBanned(address seller) external view returns (bool) {
+        return reputationOf[seller].failed >= MAX_STRIKES;
     }
 }
