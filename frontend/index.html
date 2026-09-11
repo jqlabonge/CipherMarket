@@ -179,6 +179,7 @@
   }
   .card {
     border: 1px solid var(--border);
+    border-left: 4px solid var(--border2);
     background: var(--panel);
     border-radius: 20px;
     padding: 1.25rem;
@@ -191,9 +192,12 @@
   }
   @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-  .card.eligible { border-color: rgba(18,183,106,0.35); box-shadow: 0 0 0 1px rgba(18,183,106,0.12), var(--shadow-sm); }
-  .card.yours { border-color: rgba(255,55,199,0.3); box-shadow: 0 0 0 1px rgba(255,55,199,0.10), var(--shadow-sm); }
-  .card.locked { opacity: 0.75; }
+  /* color coding: pink = your listing, green = you're eligible to buy, grey = not available to you */
+  .card.eligible { border-left-color: var(--success); border-color: rgba(18,183,106,0.35); background: linear-gradient(180deg, var(--success-dim) 0%, var(--panel) 90px); box-shadow: 0 0 0 1px rgba(18,183,106,0.12), var(--shadow-sm); }
+  .card.yours { border-left-color: var(--accent); border-color: rgba(255,55,199,0.3); background: linear-gradient(180deg, var(--accent-dim) 0%, var(--panel) 90px); box-shadow: 0 0 0 1px rgba(255,55,199,0.10), var(--shadow-sm); }
+  .card.locked { border-left-color: var(--muted2); background: var(--bg2); opacity: 0.8; }
+  .card.locked:hover { transform: none; box-shadow: var(--shadow-sm); }
+  .card.purchased { border-left-color: var(--accent2); border-color: rgba(76,111,255,0.3); background: linear-gradient(180deg, var(--accent2-dim) 0%, var(--panel) 90px); box-shadow: 0 0 0 1px rgba(76,111,255,0.10), var(--shadow-sm); }
   .card .row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.82rem; color: var(--muted); }
   .card .title { font-size: 1.05rem; font-weight: 700; line-height: 1.3; letter-spacing: -0.01em; }
   .badge { display: inline-flex; align-items:center; gap:0.3rem; font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 700; letter-spacing: 0.01em; }
@@ -687,7 +691,7 @@
         browser, using <code>toy-vulnerable-signer.js</code> (no real key, no real funds, never
         sent anywhere). This is exactly the bug class the marketplace exists to disclose.
       </p>
-      <button class="primary" id="genTargetBtn">Generate synthetic vulnerable target</button>
+      <button class="primary" id="genTargetBtn" style="margin-top:1.1rem;">Generate synthetic vulnerable target</button>
       <div id="vulnOutput" style="margin-top:0.9rem;"></div>
     </div>
   </section>
@@ -1119,7 +1123,11 @@ function renderCard({ id, l, rep, isOwner, isBuyer, eligible }) {
   const priceEth = ethers.formatEther(l.price);
   const repPct = (Number(rep) / 100).toFixed(0);
   const disclosed = status === 'Verified' && l.finding && l.finding.length > 0;
-  const cardClass = isOwner ? 'yours' : (eligible && status === 'Listed') ? 'eligible' : (!eligible && !isOwner && !isBuyer && status === 'Listed') ? 'locked' : '';
+  const cardClass = isOwner ? 'yours'
+    : (eligible && status === 'Listed') ? 'eligible'
+    : isBuyer ? 'purchased'
+    : (!eligible && !isOwner && !isBuyer && status === 'Listed') ? 'locked'
+    : 'locked';
 
   let ownerBadge = '';
   if (isOwner) ownerBadge = `<span class="badge yours">Your listing</span>`;
