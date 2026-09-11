@@ -7,6 +7,9 @@
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <script src="./abi.js"></script>
 <script src="./toy-vulnerable-signer.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #FFFFFF;
@@ -33,6 +36,7 @@
     --shadow-sm: 0 1px 2px rgba(20,20,30,0.04);
     --shadow-md: 0 8px 24px rgba(20,20,30,0.06);
     --shadow-lg: 0 16px 40px rgba(20,20,30,0.10);
+    --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
   }
   * { box-sizing: border-box; }
@@ -293,6 +297,64 @@
   .status-widget .status-item.match { border-color: rgba(18,183,106,0.35); background: var(--success-dim); }
   .status-widget .status-item.mismatch { border-color: rgba(240,56,75,0.3); background: var(--danger-dim); }
 
+  /* promo-style panels (Connection status / How it works) -- compact by
+     default, everything past the headline lives behind a click. */
+  details.promo-panel { padding: 0; border: 1px solid var(--border); overflow: hidden; }
+  .promo-panel > summary {
+    list-style: none; cursor: pointer; position: relative; overflow: hidden;
+    padding: 1.3rem 1.4rem; border-radius: 24px;
+    background: linear-gradient(135deg, #FFF1F8 0%, #FFEAF5 45%, #F1EEFF 100%);
+  }
+  .promo-panel.alt > summary {
+    background: linear-gradient(135deg, #FFF4E8 0%, #FFEAF0 50%, #FCE7F7 100%);
+  }
+  .promo-panel > summary::-webkit-details-marker { display: none; }
+  .promo-panel > summary::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(20,20,30,0.07) 1px, transparent 1px);
+    background-size: 15px 15px;
+    -webkit-mask-image: radial-gradient(ellipse at 88% 18%, black 0%, transparent 55%);
+            mask-image: radial-gradient(ellipse at 88% 18%, black 0%, transparent 55%);
+  }
+  .promo-eyebrow {
+    position: relative; z-index: 1; display: flex; align-items: center; gap: 0.4rem;
+    font-family: var(--font-display); font-weight: 700; font-size: 0.7rem;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-ink);
+    margin-bottom: 0.5rem;
+  }
+  .promo-headline {
+    position: relative; z-index: 1; font-family: var(--font-display);
+    font-weight: 700; font-size: 1.15rem; letter-spacing: -0.01em;
+    margin: 0 0 0.3rem; color: var(--text);
+  }
+  .promo-sub {
+    position: relative; z-index: 1; font-size: 0.84rem; color: var(--muted);
+    margin: 0 0 1rem; max-width: 48ch; line-height: 1.5;
+  }
+  .promo-toggle {
+    position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: var(--font-display); font-weight: 600; font-size: 0.76rem;
+    background: white; color: var(--text); border: 1px solid rgba(20,20,30,0.12);
+    padding: 0.5rem 0.95rem; border-radius: 999px; box-shadow: var(--shadow-sm);
+  }
+  .promo-panel[open] > summary .promo-toggle .chev { transform: rotate(90deg); }
+  .promo-toggle .chev { display: inline-block; transition: transform 0.15s ease; }
+  .promo-panel > .promo-body { padding: 0 1.4rem 1.4rem; }
+  .promo-panel#debugStatusPanel.match > summary { background: linear-gradient(135deg, #EAFBF2 0%, #F1FAF6 55%, #F7FDF9 100%); }
+  .promo-panel#debugStatusPanel.mismatch > summary { background: linear-gradient(135deg, #FDEFF0 0%, #FEF3F0 55%, #FEF8F5 100%); }
+
+  .step { border: 1px solid var(--border); border-radius: 14px; background: var(--bg2); overflow: hidden; }
+  .step + .step { margin-top: 0.55rem; }
+  .step summary {
+    list-style: none; cursor: pointer; padding: 0.75rem 0.9rem;
+    font-size: 0.86rem; display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap;
+  }
+  .step summary::-webkit-details-marker { display: none; }
+  .step summary::after { content: "+"; margin-left: auto; color: var(--muted2); font-weight: 700; }
+  .step[open] summary::after { content: "\2212"; }
+  .step p { margin: 0; padding: 0 0.9rem 0.85rem; font-size: 0.84rem; color: var(--muted); line-height: 1.55; }
+  .step p code { color: var(--accent-ink); background: var(--accent-dim); padding: 0.05rem 0.35rem; border-radius: 5px; font-size: 0.82em; }
+
   /* toasts */
   #toastHost { position: fixed; right: 1.1rem; bottom: 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 200; max-width: 340px; }
   .toast {
@@ -343,73 +405,91 @@
       messages. No oracle, no human judge: the math is the verifier.
     </p>
     <div class="hero-badges">
-      <span class="chip">🔒 commit-then-reveal</span>
-      <span class="chip">⚖️ stake-slashed escrow</span>
-      <span class="chip">🎯 buyer must be the affected account</span>
-      <span class="chip">🤖 agent-to-agent purchasing</span>
+      <span class="chip">commit-then-reveal</span>
+      <span class="chip">stake-slashed escrow</span>
+      <span class="chip">buyer must be the affected account</span>
+      <span class="chip">agent-to-agent purchasing</span>
     </div>
   </section>
 
-  <div class="panel" id="debugStatusPanel">
-    <h2>🧭 Connection status <span class="muted" style="font-weight:400;font-size:0.8rem;">-- check this before asking "why can't I buy"</span></h2>
-    <div class="status-widget">
-      <div class="status-item" id="status-connected">
-        <div class="k">Connected wallet</div>
-        <div class="v" id="status-connected-v">not connected</div>
-      </div>
-      <div class="status-item" id="status-fixedkey">
-        <div class="k">Fixed target key (Seller Agent)</div>
-        <div class="v" id="status-fixedkey-v">not set</div>
-      </div>
-      <div class="status-item" id="status-match">
-        <div class="k">Do they match?</div>
-        <div class="v" id="status-match-v">--</div>
-      </div>
-    </div>
-    <p class="hint" style="margin-top:0.8rem;">
-      To buy a listing, the <b>connected wallet</b> shown above must be the exact account the
-      listing targets. Pasting a key into "Fixed target private key" only decides what
-      <i>future</i> Seller Agent listings target -- it does not connect that wallet. You still need
-      to: (1) import it into MetaMask if you haven't, (2) switch MetaMask's active account to it,
-      and (3) make sure this panel shows a match, before Buy will appear on that listing.
-    </p>
-  </div>
-
-  <details class="panel collapsible" id="walkthroughPanel" open>
-    <summary class="flex" style="justify-content:space-between;">
-      <span style="font-weight:600;font-size:0.9rem;">🧭 How this works, step by step</span>
-      <span class="muted mono" style="font-size:0.76rem;">click to collapse</span>
+  <details class="panel promo-panel" id="debugStatusPanel">
+    <summary>
+      <div class="promo-eyebrow">Wallet check</div>
+      <div class="promo-headline" id="statusHeadline">Not connected</div>
+      <p class="promo-sub" id="statusSub">Connect a wallet to see whether it can buy anything right now.</p>
+      <span class="promo-toggle">Details <span class="chev">&rarr;</span></span>
     </summary>
-    <ol class="walkthrough">
-      <li>
-        <b>List.</b> Seller commits <code>keccak256(findingText)</code> plus public metadata
-        (target account, category, severity, price) and posts a 10% stake. The finding text
-        itself never touches the chain yet.
-      </li>
-      <li>
-        <b>Buy blind.</b> Only the named <code>targetAccount</code> -- or a wallet it has
-        explicitly authorized -- can pay the price into escrow. Nobody else's <code>purchase()</code>
-        call is even accepted by the contract; the eligibility check happens on-chain, not in this UI.
-      </li>
-      <li>
-        <b>Reveal.</b> Seller submits the full finding plus two ECDSA signatures sharing one
-        <code>r</code>. The contract runs <code>ecrecover</code> on both, twice -- no oracle, no
-        human referee, just math. Match &rarr; escrow (price + stake) pays the seller and the
-        finding is disclosed on-chain. Mismatch &rarr; buyer is refunded in full <i>and</i>
-        receives the seller's slashed stake.
-      </li>
-      <li>
-        <b>Timeout fallback.</b> If the seller never reveals within the window, anyone can call
-        <code>claimTimeout()</code> and it resolves exactly like a failed reveal.
-      </li>
-    </ol>
-    <p class="hint">This is the same sequence the "Simulate Vulnerable Target" tab lets you run
-      yourself end-to-end with synthetic, zero-risk demo data.</p>
+    <div class="promo-body">
+      <div class="status-widget">
+        <div class="status-item" id="status-connected">
+          <div class="k">Connected wallet</div>
+          <div class="v" id="status-connected-v">not connected</div>
+        </div>
+        <div class="status-item" id="status-fixedkey">
+          <div class="k">Fixed target key (Seller Agent)</div>
+          <div class="v" id="status-fixedkey-v">not set</div>
+        </div>
+        <div class="status-item" id="status-match">
+          <div class="k">Do they match?</div>
+          <div class="v" id="status-match-v">--</div>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:0.8rem;">
+        Buying requires the connected wallet above to be the exact account a listing targets --
+        pasting a key into "Fixed target private key" only sets what future Seller Agent listings
+        target, it doesn't connect that wallet for you.
+      </p>
+    </div>
+  </details>
+
+  <details class="panel promo-panel alt" id="walkthroughPanel">
+    <summary>
+      <div class="promo-eyebrow">Protocol flow</div>
+      <div class="promo-headline">How a disclosure moves through the market</div>
+      <p class="promo-sub">List &rarr; buy blind &rarr; reveal &rarr; verified on-chain, enforced entirely by the contract.</p>
+      <span class="promo-toggle">Walk through it <span class="chev">&rarr;</span></span>
+    </summary>
+    <div class="promo-body">
+      <ol class="walkthrough" style="list-style:none; padding-left:0;">
+        <li>
+          <details class="step">
+            <summary><b>1. List</b> <span class="muted">-- a hash, not the finding, goes on-chain</span></summary>
+            <p>Seller commits <code>keccak256(findingText)</code> plus public metadata (target
+              account, category, severity, price) and posts a 10% stake. The finding text itself
+              never touches the chain yet.</p>
+          </details>
+        </li>
+        <li>
+          <details class="step">
+            <summary><b>2. Buy blind</b> <span class="muted">-- only the affected account can pay</span></summary>
+            <p>Only the named <code>targetAccount</code> -- or a wallet it has explicitly
+              authorized -- can pay the price into escrow. The eligibility check happens on-chain,
+              not in this UI, so nobody else's <code>purchase()</code> call is even accepted.</p>
+          </details>
+        </li>
+        <li>
+          <details class="step">
+            <summary><b>3. Reveal</b> <span class="muted">-- math decides, not a referee</span></summary>
+            <p>Seller submits the full finding plus two ECDSA signatures sharing one
+              <code>r</code>. The contract runs <code>ecrecover</code> on both. Match &rarr;
+              escrow (price + stake) pays the seller and the finding is disclosed on-chain.
+              Mismatch &rarr; buyer is refunded in full and receives the seller's slashed stake.</p>
+          </details>
+        </li>
+        <li>
+          <details class="step">
+            <summary><b>4. Timeout fallback</b> <span class="muted">-- nothing gets stuck forever</span></summary>
+            <p>If the seller never reveals within the window, anyone can call
+              <code>claimTimeout()</code> and it resolves exactly like a failed reveal.</p>
+          </details>
+        </li>
+      </ol>
+    </div>
   </details>
 
   <details class="panel collapsible" id="contractPanel">
     <summary class="flex" style="justify-content:space-between;">
-      <span style="font-weight:600;font-size:0.9rem;">⚙️ Contract connection</span>
+      <span style="font-weight:600;font-size:0.9rem;">Contract connection</span>
       <span class="pill" id="contractStatusPill">not set</span>
     </summary>
     <div class="flex" style="margin-top:0.9rem;">
@@ -454,7 +534,7 @@
 
     <details class="panel collapsible" id="delegatePanel" style="margin-bottom:1.1rem;">
       <summary class="flex" style="justify-content:space-between;">
-        <span style="font-weight:600;font-size:0.9rem;">🤝 Manage delegate buyers</span>
+        <span style="font-weight:600;font-size:0.9rem;">Manage delegate buyers</span>
         <span class="muted mono" style="font-size:0.76rem;">for listings that name you as the target</span>
       </summary>
       <p class="hint" style="margin-top:0.8rem;">
@@ -482,7 +562,7 @@
 
   <section id="tab-sell" hidden>
     <div class="panel">
-      <h2>📤 Create a listing</h2>
+      <h2>Create a listing</h2>
       <label>Target account (the allegedly-vulnerable signer's address)</label>
       <input id="f-target" placeholder="0x..." />
       <p class="hint">This is the <b>only</b> wallet (plus anyone it explicitly authorizes) that will
@@ -521,7 +601,7 @@
     </div>
 
     <div class="panel" style="margin-top:1rem;">
-      <h2>🔓 Reveal <span class="muted" style="font-weight:400;font-size:0.8rem;">(seller: after a listing is purchased)</span></h2>
+      <h2>Reveal <span class="muted" style="font-weight:400;font-size:0.8rem;">(seller: after a listing is purchased)</span></h2>
       <label>Listing ID</label>
       <input id="rv-id" placeholder="0" />
       <label>Full finding text (must match the commitment)</label>
@@ -549,7 +629,7 @@
 
   <section id="tab-agents" hidden>
     <div class="panel">
-      <h2>🕵️ Seller Agent <span class="muted" style="font-weight:400;font-size:0.8rem;">(autonomous)</span></h2>
+      <h2>Seller Agent <span class="muted" style="font-weight:400;font-size:0.8rem;">(autonomous)</span></h2>
       <p class="hint">A deterministic finding-discovery-and-listing agent: it generates a synthetic
         "vulnerable target" keypair, runs the same toy signer used in "Simulate Vulnerable Target"
         to reproduce a genuine nonce-reuse instance, decides severity/price from simple rules, and
@@ -578,7 +658,7 @@
     </div>
 
     <div class="panel" style="margin-top:1rem;">
-      <h2>🤖 Buyer Agent <span class="muted" style="font-weight:400;font-size:0.8rem;">(autonomous)</span></h2>
+      <h2>Buyer Agent <span class="muted" style="font-weight:400;font-size:0.8rem;">(autonomous)</span></h2>
       <p class="hint">A simple deterministic purchasing agent: scans listings and auto-purchases
         anything matching its rule <i>and</i> where the connected wallet is actually eligible to buy
         (the on-chain contract enforces this either way). This demonstrates agent-to-agent commerce --
@@ -598,7 +678,7 @@
 
   <section id="tab-vulnerable" hidden>
     <div class="panel">
-      <h2>🧪 Simulate a vulnerable target <span class="muted" style="font-weight:400;font-size:0.8rem;">(demo data only)</span></h2>
+      <h2>Simulate a vulnerable target <span class="muted" style="font-weight:400;font-size:0.8rem;">(demo data only)</span></h2>
       <p class="hint">
         Real signers derive each signature's nonce deterministically from the message
         (RFC&nbsp;6979) specifically so nonces never repeat. To have something real to disclose in
@@ -761,6 +841,10 @@ function updateDebugStatus() {
   const fixedEl = document.getElementById('status-fixedkey-v');
   const matchBox = document.getElementById('status-match');
   const matchEl = document.getElementById('status-match-v');
+  const panel = document.getElementById('debugStatusPanel');
+  const headline = document.getElementById('statusHeadline');
+  const sub = document.getElementById('statusSub');
+  const short = (a) => a ? `${a.slice(0,6)}...${a.slice(-4)}` : a;
 
   connectedEl.textContent = currentAddress || 'not connected';
 
@@ -775,14 +859,28 @@ function updateDebugStatus() {
   fixedEl.textContent = fixedAddr || 'not set';
 
   matchBox.classList.remove('match', 'mismatch');
-  if (!currentAddress || !fixedAddr) {
+  panel.classList.remove('match', 'mismatch');
+
+  if (!currentAddress) {
     matchEl.textContent = '--';
+    headline.textContent = 'Not connected';
+    sub.textContent = 'Connect a wallet to see whether it can buy anything right now.';
+  } else if (!fixedAddr) {
+    matchEl.textContent = '--';
+    headline.textContent = `Connected: ${short(currentAddress)}`;
+    sub.textContent = 'Set a fixed target key in the Seller Agent panel to check for a match.';
   } else if (currentAddress.toLowerCase() === fixedAddr.toLowerCase()) {
-    matchEl.textContent = '✅ match -- you can buy listings that target this address';
+    matchEl.textContent = 'Match -- you can buy listings that target this address';
     matchBox.classList.add('match');
+    panel.classList.add('match');
+    headline.textContent = 'Ready to buy';
+    sub.textContent = `Connected wallet matches the fixed target address (${short(fixedAddr)}).`;
   } else {
-    matchEl.textContent = '❌ no match -- switch MetaMask to the fixed target address';
+    matchEl.textContent = 'No match -- switch MetaMask to the fixed target address';
     matchBox.classList.add('mismatch');
+    panel.classList.add('mismatch');
+    headline.textContent = 'Wrong wallet for this target';
+    sub.textContent = `Switch MetaMask to ${short(fixedAddr)} to buy listings that target it.`;
   }
 }
 
@@ -976,15 +1074,15 @@ async function loadListings() {
       !(x.eligible && Number(x.l.status) === 0));
 
     let html = '';
-    html += section('🎯 Affects your wallet -- you can buy', canBuy,
+    html += section('Affects your wallet -- you can buy', canBuy,
       'These listings name your connected address (or an account that has authorized it) as the target. You are eligible to purchase.', true);
-    html += section('📤 Your listings', yours,
+    html += section('Your listings', yours,
       'Listings you created as the seller. You cannot purchase your own listing.', true);
-    html += section('🧾 Your purchases', yourPurchases,
+    html += section('Your purchases', yourPurchases,
       'Listings you have bought into escrow or already resolved.', true);
-    html += section('🔒 Other listings (not eligible)', locked,
+    html += section('Other listings (not eligible)', locked,
       "Public metadata only, purchase disabled. Only the address named as \"target\" (or a delegate that address has authorized) can buy a listing -- so browsing here for something to buy as leverage against someone else's wallet will not work.", false);
-    html += section('📚 Resolved / in progress (not yours)', other,
+    html += section('Resolved / in progress (not yours)', other,
       'Listings belonging to other sellers/buyers, shown for transparency.', false);
 
     root.innerHTML = html || '<div class="empty-state">Nothing to show yet.</div>';
@@ -1035,7 +1133,7 @@ function renderCard({ id, l, rep, isOwner, isBuyer, eligible }) {
     } else if (eligible) {
       actionHtml = `<button class="primary buy-btn" data-id="${id}" data-price="${l.price}">Buy for ${priceEth} ETH</button>`;
     } else {
-      actionHtml = `<div class="lock-note">🔒 Not eligible to purchase -- only <span class="mono">${l.targetAccount.slice(0,8)}...${l.targetAccount.slice(-4)}</span> or an address it has authorized can buy this.</div>`;
+      actionHtml = `<div class="lock-note">Not eligible to purchase -- only <span class="mono">${l.targetAccount.slice(0,8)}...${l.targetAccount.slice(-4)}</span> or an address it has authorized can buy this.</div>`;
     }
   } else if (status === 'Escrowed') {
     actionHtml = `<button class="timeout-btn small" data-id="${id}">Claim timeout (if reveal window passed)</button>`;
@@ -1053,9 +1151,9 @@ function renderCard({ id, l, rep, isOwner, isBuyer, eligible }) {
     <div class="row"><span>Price</span><span>${priceEth} ETH</span></div>
     ${disclosed
       ? `<div class="finding-box">${escapeHtml(l.finding)}</div>
-         <button class="small derive-key-btn" data-id="${id}" data-target="${l.targetAccount}">🔑 Derive private key from this disclosure</button>
+         <button class="small derive-key-btn" data-id="${id}" data-target="${l.targetAccount}">Derive private key from this disclosure</button>
          <div class="derive-key-result" id="derive-result-${id}"></div>`
-      : `<div class="finding-box">🔒 locked until purchase + verified reveal</div>`}
+      : `<div class="finding-box">Locked until purchase + verified reveal</div>`}
     ${actionHtml}
   </div>`;
 }
@@ -1136,7 +1234,7 @@ function attachCardHandlers() {
         }
         resultBox.innerHTML = `
           <div class="finding-box" style="border-color:${result.matchesTarget ? 'var(--success)' : 'var(--danger)'};">
-${result.matchesTarget ? '✅ Recovered key derives the exact target address -- this disclosure is real, exploit-grade evidence.' : '⚠️ Recovered a candidate key, but it does not derive the target address -- treat with suspicion.'}
+${result.matchesTarget ? 'Recovered key derives the exact target address -- this disclosure is real, exploit-grade evidence.' : 'Recovered a candidate key, but it does not derive the target address -- treat with suspicion.'}
 
 Recovered private key: ${result.privateKey}
 Derived address:       ${result.address}
