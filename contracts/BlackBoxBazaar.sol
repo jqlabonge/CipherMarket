@@ -73,6 +73,15 @@ contract BlackBoxBazaar {
     mapping(uint256 => Listing) public listings;
     mapping(address => Reputation) public reputationOf;
 
+    /// @notice targetAccount => delegate => allowed to purchase on the target's behalf.
+    ///         Lets an affected account route purchases through a different wallet
+    ///         (an ops/treasury address, a security team's multisig, an exchange's
+    ///         custody desk) without ever needing to transact from the very key the
+    ///         listing claims is compromised. Only targetAccount itself can grant or
+    ///         revoke this -- an attacker who doesn't control targetAccount can never
+    ///         self-authorize, so this can't be used to buy leverage against someone else.
+    mapping(address => mapping(address => bool)) public authorizedBuyer;
+
     uint256 public constant REVEAL_WINDOW = 1 hours;
     uint256 public constant STAKE_BPS = 1000; // seller stakes 10% of price
 
@@ -91,10 +100,34 @@ contract BlackBoxBazaar {
     event Refunded(uint256 indexed id, address indexed buyer);
     event Cancelled(uint256 indexed id, address indexed seller);
     event Disclosed(uint256 indexed id, string finding);
+    event BuyerAuthorized(address indexed targetAccount, address indexed buyer);
+    event BuyerRevoked(address indexed targetAccount, address indexed buyer);
 
     modifier onlySeller(uint256 id) {
         require(msg.sender == listings[id].seller, "not seller");
         _;
+    }
+
+    /// @notice Let another address purchase, on your behalf, any listing that names
+    ///         you (msg.sender) as targetAccount. Call this from the account you
+    ///         believe is affected to authorize e.g. a separate ops wallet.
+    function authorizeBuyer(address buyer) external {
+        authorizedBuyer[msg.sender][buyer] = true;
+        emit BuyerAuthorized(msg.sender, buyer);
+    }
+
+    /// @notice Revoke a previously granted purchase delegation.
+    function revokeBuyer(address buyer) external {
+        authorizedBuyer[msg.sender][buyer] = false;
+        emit BuyerRevoked(msg.sender, buyer);
+    }
+
+    /// @notice Whether `who` is allowed to purchase listing `id`: either they *are*
+    ///         the target account the finding is about, or the target account has
+    ///         explicitly authorized them as a delegate buyer.
+    function isEligibleBuyer(uint256 id, address who) public view returns (bool) {
+        address target = listings[id].targetAccount;
+        return who == target || authorizedBuyer[target][who];
     }
 
     /// @notice List a claim. Public metadata is visible immediately; the
@@ -140,10 +173,17 @@ contract BlackBoxBazaar {
     }
 
     /// @notice Buyer pays the listed price into escrow, sight-unseen.
+    /// @dev Restricted to the target account itself or an address it has explicitly
+    ///      authorized via `authorizeBuyer`. This is what keeps the marketplace from
+    ///      being usable to buy "leverage" against someone else's wallet: only the
+    ///      account the finding is actually about (or a delegate *it* named) can pay
+    ///      to see it. The seller is also blocked from buying their own listing.
     function purchase(uint256 id) external payable {
         Listing storage l = listings[id];
         require(l.status == Status.Listed, "not available");
         require(msg.value == l.price, "wrong price");
+        require(msg.sender != l.seller, "seller cannot buy own listing");
+        require(isEligibleBuyer(id, msg.sender), "only the target account or its authorized delegate may purchase");
 
         l.buyer = payable(msg.sender);
         l.status = Status.Escrowed;

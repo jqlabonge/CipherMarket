@@ -29,8 +29,11 @@ on-chain predicate in this MVP -- see Limitation, below.
    non-sensitive metadata: `targetAccount`, `category`, `severity`, `title`, `price`.
    They also post a stake (10% of price) as a good-faith bond. The full finding text
    is **not** stored on-chain yet.
-2. **Buy blind.** A buyer pays `price` into escrow via `purchase()`, before seeing
-   anything but the public metadata.
+2. **Buy blind -- but only if you're actually affected.** `purchase()` requires
+   `msg.sender` to either *be* `targetAccount`, or be an address `targetAccount` has
+   explicitly authorized via `authorizeBuyer()` (see "Who can buy," below). The
+   seller is also blocked from purchasing their own listing. An eligible buyer pays
+   `price` into escrow, before seeing anything but the public metadata.
 3. **Reveal.** The seller calls `reveal()` with the full finding text plus the actual
    cryptographic evidence: two `(messageHash, v, s)` triples sharing one `r`. The
    contract checks, in order:
@@ -51,6 +54,26 @@ on-chain predicate in this MVP -- see Limitation, below.
 No off-chain oracle and no human referee are involved in the ECDSA verification at
 any point -- `ecrecover` is the entire trust mechanism for the supported claim.
 
+### Who can buy a listing
+
+Only `targetAccount` -- or an address `targetAccount` has explicitly authorized --
+may call `purchase()`. Everyone else can browse a listing's public metadata but
+`purchase()` reverts for them. This is enforced on-chain (`isEligibleBuyer`, checked
+inside `purchase`), not just hidden in the UI, so it holds even against a
+custom script or another frontend talking to the contract directly.
+
+The reasoning: the buyer's only real incentive to reveal a finding by paying for it
+is that *their own* wallet is the one put at risk. Letting anyone pay to unlock a
+finding would turn the marketplace into a way to buy attack leverage against a third
+party's wallet -- pay once, then use the disclosed nonce-reuse evidence to derive
+their private key yourself. Restricting `purchase()` to the target account removes
+that incentive without removing any legitimate one: a target that wants to pay from
+a different wallet (an ops address, a security team's multisig, a custodian) can
+call `authorizeBuyer(delegate)` themselves first -- only `targetAccount` can grant or
+revoke that, so an attacker who doesn't already control the target can never
+self-authorize their way in. See "Other reasons someone might legitimately buy," below,
+for the delegate cases this is meant to cover.
+
 ## 3. How ECDSA nonce-reuse verification works (high level)
 
 For a signature `(r, s)` over hash `h` with nonce `k` and private key `d`:
@@ -66,6 +89,31 @@ signatures are both genuinely signed by `targetAccount`'s key, over different
 messages, sharing an `r`. `ecrecover` alone answers "did `targetAccount`'s key
 produce this signature," and running it twice against the two supplied signatures is
 sufficient to make the nonce-reuse claim mathematically checkable.
+
+### Other reasons someone might legitimately buy
+
+The core case is the obvious one: `targetAccount` itself (or an org that controls
+it) wants to know if it's actually vulnerable before an attacker finds the same bug.
+A few related, still-legitimate cases that motivated allowing *delegate* buyers
+rather than hard-restricting to `msg.sender == targetAccount` with no exceptions:
+
+- **The org doesn't operate from a single EOA.** A protocol's "signer" might be one
+  key inside a larger operational setup (a treasury multisig, a custody provider, an
+  internal security team's own wallet). They want to pay from an address they
+  normally transact from, not necessarily the specific key under question.
+- **Paying from the possibly-compromised key is itself a bad idea.** If nonce reuse
+  really did leak the private key, using that same key to sign a purchase
+  transaction is still cryptographically fine (revealing `r` doesn't leak anything
+  new), but an organization's operational policy might reasonably forbid touching a
+  key they suspect is bad for *any* purpose, including paying to confirm it.
+- **A security vendor buying on the target's behalf.** A retained auditor or
+  incident-response firm the target has engaged might be the one actually clicking
+  "buy," using their own wallet, with the target's authorization.
+
+What this is *not* meant to enable: someone unaffiliated with `targetAccount`
+buying "to see if it's worth attacking." That's exactly what restricting eligibility
+to `targetAccount` + its own delegates rules out -- nobody outside that circle can
+grant themselves access.
 
 ## 4. Trust assumptions
 
@@ -180,8 +228,13 @@ npm run dev
 
 Open the printed `http://localhost:5173` URL. Paste in a deployed contract
 address (see below), connect MetaMask, and:
-- **Marketplace tab** -- browse listings, buy, see disclosed findings, claim
-  timeouts.
+- **Marketplace tab** -- listings are grouped by your relationship to them: listings
+  that name your connected wallet as the target (or that you've been authorized to
+  buy), your own listings as a seller, your past purchases, and -- shown for
+  transparency but not purchasable -- everyone else's listings, each carrying a
+  visible reason why you can't buy it. A collapsible "Manage delegate buyers" panel
+  lets the connected wallet call `authorizeBuyer` / `revokeBuyer` for listings that
+  target it.
 - **Sell a Finding tab** -- create a listing (commits a hash only) and, after a
   buyer purchases, submit the reveal.
 - **Autonomous Agents tab** -- a deterministic buyer agent that scans all

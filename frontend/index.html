@@ -10,23 +10,36 @@
 <style>
   :root {
     --bg: #0b0d12;
+    --bg2: #0e1017;
     --panel: #12151d;
     --panel2: #191d28;
+    --panel3: #1f2432;
     --border: #262b3a;
+    --border2: #333a4d;
     --text: #e7e9ee;
     --muted: #8b91a3;
+    --muted2: #5f6579;
     --accent: #7c5cff;
+    --accent-dim: rgba(124,92,255,0.15);
     --accent2: #33d1a8;
+    --accent2-dim: rgba(51,209,168,0.15);
     --danger: #ff5c7a;
+    --danger-dim: rgba(255,92,122,0.15);
     --warn: #ffb547;
+    --warn-dim: rgba(255,181,71,0.15);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
   }
   * { box-sizing: border-box; }
+  ::selection { background: var(--accent-dim); color: var(--text); }
   body {
     margin: 0;
-    background: var(--bg);
+    background:
+      radial-gradient(1200px 500px at 10% -10%, rgba(124,92,255,0.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(51,209,168,0.06), transparent 55%),
+      var(--bg);
     color: var(--text);
     padding-bottom: 4rem;
+    min-height: 100vh;
   }
   header {
     display: flex;
@@ -36,48 +49,72 @@
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
-    background: rgba(11,13,18,0.9);
-    backdrop-filter: blur(6px);
-    z-index: 10;
+    background: rgba(11,13,18,0.85);
+    backdrop-filter: blur(10px);
+    z-index: 50;
     flex-wrap: wrap;
     gap: 0.75rem;
   }
-  header h1 { font-size: 1.05rem; margin: 0; letter-spacing: 0.01em; }
+  header h1 { font-size: 1.05rem; margin: 0; letter-spacing: 0.01em; display:flex; align-items:center; gap:0.45rem; }
   header h1 span { color: var(--accent); }
+  .logo-dot { width:8px; height:8px; border-radius:50%; background: var(--accent2); box-shadow: 0 0 10px var(--accent2); display:inline-block; }
   .pill {
     font-size: 0.72rem;
-    padding: 0.2rem 0.55rem;
+    padding: 0.28rem 0.65rem;
     border-radius: 999px;
     border: 1px solid var(--border);
     color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
   }
+  .pill.role-seller { border-color: rgba(124,92,255,0.4); color: #b9a8ff; }
+  .pill.role-buyer { border-color: rgba(51,209,168,0.4); color: #7fe6c9; }
   button {
     font: inherit;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: 9px;
     border: 1px solid var(--border);
     background: var(--panel2);
     color: var(--text);
-    padding: 0.55rem 0.9rem;
-    transition: 0.15s;
+    padding: 0.55rem 0.95rem;
+    transition: 0.15s ease;
   }
-  button:hover { border-color: var(--accent); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 600; }
-  button.primary:hover { filter: brightness(1.08); }
-  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+  button:active:not(:disabled) { transform: translateY(0); }
+  button.primary { background: linear-gradient(135deg, var(--accent), #6a4ce0); border-color: var(--accent); color: white; font-weight: 600; }
+  button.primary:hover:not(:disabled) { filter: brightness(1.1); box-shadow: 0 4px 18px rgba(124,92,255,0.35); }
+  button.ghost { background: transparent; }
+  button.danger-ghost { background: transparent; border-color: rgba(255,92,122,0.35); color: var(--danger); }
+  button.danger-ghost:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-dim); }
+  button.small { padding: 0.35rem 0.65rem; font-size: 0.78rem; border-radius: 7px; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+  button.loading { position: relative; color: transparent !important; }
+  button.loading::after {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 14px; height: 14px;
+    margin: -7px 0 0 -7px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.35); border-top-color: white;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
   input, select, textarea {
     font: inherit;
-    background: #0e1017;
+    background: var(--bg2);
     border: 1px solid var(--border);
     color: var(--text);
-    border-radius: 8px;
-    padding: 0.5rem 0.65rem;
+    border-radius: 9px;
+    padding: 0.55rem 0.7rem;
     width: 100%;
+    transition: border-color 0.15s;
   }
-  textarea { resize: vertical; min-height: 5rem; }
-  label { font-size: 0.78rem; color: var(--muted); display: block; margin: 0.6rem 0 0.25rem; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  input.invalid { border-color: var(--danger); }
+  textarea { resize: vertical; min-height: 5rem; font-family: inherit; }
+  label { font-size: 0.78rem; color: var(--muted); display: block; margin: 0.6rem 0 0.3rem; }
+  .hint { font-size: 0.76rem; color: var(--muted2); margin: 0.3rem 0 0; }
   main {
-    max-width: 1100px;
+    max-width: 1180px;
     margin: 0 auto;
     padding: 1.5rem;
     display: grid;
@@ -85,66 +122,100 @@
     gap: 1.5rem;
   }
   .hero {
-    padding: 1.25rem 1.4rem;
+    padding: 1.4rem 1.5rem;
     border: 1px solid var(--border);
-    border-radius: 14px;
-    background: linear-gradient(135deg, rgba(124,92,255,0.12), rgba(51,209,168,0.05));
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(124,92,255,0.14), rgba(51,209,168,0.05));
+    position: relative;
+    overflow: hidden;
   }
-  .hero p { color: var(--muted); margin: 0.4rem 0 0; line-height: 1.5; font-size: 0.92rem; }
-  .tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .hero p { color: var(--muted); margin: 0.5rem 0 0; line-height: 1.55; font-size: 0.93rem; max-width: 74ch; }
+  .hero .hero-badges { display:flex; gap:0.4rem; flex-wrap:wrap; margin-top: 0.85rem; }
+  .chip {
+    font-size: 0.72rem; padding: 0.22rem 0.6rem; border-radius: 999px;
+    border: 1px solid var(--border2); color: var(--muted); background: rgba(255,255,255,0.02);
+  }
+  .tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; border-bottom: 1px solid var(--border); padding-bottom: 0.9rem; }
   .tabs button.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .section-head { display:flex; align-items:baseline; justify-content:space-between; gap:0.75rem; margin: 1.4rem 0 0.6rem; flex-wrap: wrap; }
+  .section-head:first-child { margin-top: 0; }
+  .section-head h3 { margin:0; font-size: 0.92rem; display:flex; align-items:center; gap:0.5rem; }
+  .section-head .count { font-size: 0.72rem; color: var(--muted); background: var(--panel2); border-radius: 999px; padding: 0.1rem 0.5rem; }
+  .section-desc { font-size: 0.8rem; color: var(--muted); margin: 0 0 0.8rem; max-width: 80ch; line-height: 1.45; }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
     gap: 1rem;
   }
   .card {
     border: 1px solid var(--border);
     background: var(--panel);
-    border-radius: 12px;
-    padding: 1rem;
+    border-radius: 14px;
+    padding: 1.1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.55rem;
+    transition: border-color 0.15s, transform 0.15s;
+    animation: cardIn 0.25s ease;
   }
-  .card .row { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--muted); }
-  .card .title { font-size: 1rem; font-weight: 600; }
-  .badge { display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 999px; }
-  .badge.critical { background: rgba(255,92,122,0.18); color: var(--danger); }
-  .badge.high { background: rgba(255,181,71,0.18); color: var(--warn); }
-  .badge.medium, .badge.default { background: rgba(124,92,255,0.18); color: var(--accent); }
-  .badge.locked { background: rgba(139,145,163,0.18); color: var(--muted); }
-  .badge.verified { background: rgba(51,209,168,0.18); color: var(--accent2); }
-  .badge.failed { background: rgba(255,92,122,0.18); color: var(--danger); }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .card:hover { border-color: var(--border2); }
+  .card.eligible { border-color: rgba(51,209,168,0.35); box-shadow: 0 0 0 1px rgba(51,209,168,0.08) inset; }
+  .card.yours { border-color: rgba(124,92,255,0.35); box-shadow: 0 0 0 1px rgba(124,92,255,0.08) inset; }
+  .card.locked { opacity: 0.72; }
+  .card .row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.82rem; color: var(--muted); }
+  .card .title { font-size: 1.02rem; font-weight: 600; line-height: 1.3; }
+  .badge { display: inline-flex; align-items:center; gap:0.3rem; font-size: 0.7rem; padding: 0.18rem 0.55rem; border-radius: 999px; font-weight: 600; letter-spacing: 0.01em; }
+  .badge.critical { background: var(--danger-dim); color: var(--danger); }
+  .badge.high { background: var(--warn-dim); color: var(--warn); }
+  .badge.medium, .badge.default { background: var(--accent-dim); color: var(--accent); }
+  .badge.locked { background: rgba(139,145,163,0.15); color: var(--muted); }
+  .badge.verified { background: var(--accent2-dim); color: var(--accent2); }
+  .badge.failed { background: var(--danger-dim); color: var(--danger); }
+  .badge.eligible { background: var(--accent2-dim); color: var(--accent2); }
+  .badge.yours { background: var(--accent-dim); color: var(--accent); }
   .finding-box {
-    background: #0e1017;
+    background: var(--bg2);
     border: 1px dashed var(--border);
-    border-radius: 8px;
-    padding: 0.6rem 0.7rem;
+    border-radius: 9px;
+    padding: 0.65rem 0.75rem;
     font-size: 0.82rem;
     color: var(--muted);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     white-space: pre-wrap;
     word-break: break-word;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .lock-note {
+    background: rgba(139,145,163,0.06);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.4;
   }
   .panel {
     border: 1px solid var(--border);
     background: var(--panel);
-    border-radius: 12px;
-    padding: 1.1rem 1.25rem;
+    border-radius: 14px;
+    padding: 1.2rem 1.3rem;
   }
-  .panel h2 { margin: 0 0 0.75rem; font-size: 0.95rem; }
-  .panel h3 { margin: 1rem 0 0.4rem; font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .panel h2 { margin: 0 0 0.75rem; font-size: 0.95rem; display:flex; align-items:center; gap:0.5rem; }
+  .panel h3 { margin: 1rem 0 0.4rem; font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .panel.collapsible summary { cursor: pointer; list-style: none; }
+  .panel.collapsible summary::-webkit-details-marker { display: none; }
   .muted { color: var(--muted); }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
   .status-log {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 0.78rem;
-    background: #0e1017;
+    background: var(--bg2);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 9px;
     padding: 0.7rem;
-    max-height: 220px;
+    max-height: 240px;
     overflow-y: auto;
     white-space: pre-wrap;
   }
@@ -152,13 +223,38 @@
   .flex { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
   .grow { flex: 1; min-width: 160px; }
   .footer-note { font-size: 0.78rem; color: var(--muted); text-align: center; margin-top: 2rem; }
+  .skeleton { border-radius: 14px; height: 170px; background: linear-gradient(100deg, var(--panel) 30%, var(--panel3) 50%, var(--panel) 70%); background-size: 220% 100%; animation: shimmer 1.3s ease-in-out infinite; }
+  @keyframes shimmer { to { background-position: -220% 0; } }
+  .empty-state { padding: 1.6rem; text-align:center; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted); font-size: 0.86rem; }
+
+  /* toasts */
+  #toastHost { position: fixed; right: 1.1rem; bottom: 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 200; max-width: 340px; }
+  .toast {
+    background: var(--panel3); border: 1px solid var(--border2); border-radius: 11px;
+    padding: 0.75rem 0.9rem; font-size: 0.84rem; box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+    animation: toastIn 0.2s ease; line-height: 1.4;
+  }
+  .toast.success { border-color: rgba(51,209,168,0.4); }
+  .toast.error { border-color: rgba(255,92,122,0.45); }
+  .toast.info { border-color: rgba(124,92,255,0.35); }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+
+  /* modal */
+  #modalHost { position: fixed; inset: 0; background: rgba(6,7,10,0.6); backdrop-filter: blur(2px); display:flex; align-items:center; justify-content:center; z-index: 300; padding: 1rem; }
+  #modalHost[hidden] { display: none; }
+  .modal-box { background: var(--panel2); border: 1px solid var(--border2); border-radius: 16px; padding: 1.4rem; max-width: 420px; width: 100%; animation: modalIn 0.18s ease; }
+  @keyframes modalIn { from { opacity:0; transform: scale(0.97); } to { opacity:1; transform:none; } }
+  .modal-box h3 { margin: 0 0 0.6rem; font-size: 1rem; }
+  .modal-box p { margin: 0 0 1rem; font-size: 0.86rem; color: var(--muted); line-height: 1.5; }
+  .modal-actions { display:flex; gap:0.6rem; justify-content:flex-end; }
+
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>The <span>Black Box</span> Bazaar</h1>
+  <h1><span class="logo-dot"></span>The <span>Black Box</span> Bazaar</h1>
   <div class="flex">
     <span class="pill" id="netPill">not connected</span>
     <button id="connectBtn">Connect Wallet</button>
@@ -175,24 +271,33 @@
       check confirms both signatures really do recover to the target account over two different
       messages. No oracle, no human judge: the math is the verifier.
     </p>
+    <div class="hero-badges">
+      <span class="chip">🔒 commit-then-reveal</span>
+      <span class="chip">⚖️ stake-slashed escrow</span>
+      <span class="chip">🎯 buyer must be the affected account</span>
+      <span class="chip">🤖 agent-to-agent purchasing</span>
+    </div>
   </section>
 
-  <section class="panel">
-    <h2>Contract</h2>
-    <div class="flex">
+  <details class="panel collapsible" id="contractPanel">
+    <summary class="flex" style="justify-content:space-between;">
+      <span style="font-weight:600;font-size:0.9rem;">⚙️ Contract connection</span>
+      <span class="pill" id="contractStatusPill">not set</span>
+    </summary>
+    <div class="flex" style="margin-top:0.9rem;">
       <div class="grow">
         <label for="contractAddr">Deployed BlackBoxBazaar address</label>
-        <input id="contractAddr" placeholder="0x... (paste after deployment, or use the local default)" />
+        <input id="contractAddr" placeholder="0x... (paste after deployment)" />
       </div>
       <div style="align-self:flex-end;">
         <button id="saveAddrBtn">Save</button>
       </div>
     </div>
-    <p class="muted" style="font-size:0.8rem;margin:0.5rem 0 0;">
+    <p class="hint">
       Not deployed yet? See <a href="../README.md">README</a> for the Ethereum Sepolia deploy steps.
       This field is saved in your browser only.
     </p>
-  </section>
+  </details>
 
   <nav class="tabs">
     <button data-tab="market" class="active">Marketplace</button>
@@ -202,18 +307,42 @@
   </nav>
 
   <section id="tab-market">
-    <div class="flex" style="justify-content:space-between;margin-bottom:0.75rem;">
+    <details class="panel collapsible" id="delegatePanel" style="margin-bottom:1.1rem;">
+      <summary class="flex" style="justify-content:space-between;">
+        <span style="font-weight:600;font-size:0.9rem;">🤝 Manage delegate buyers</span>
+        <span class="muted mono" style="font-size:0.76rem;">for listings that name you as the target</span>
+      </summary>
+      <p class="hint" style="margin-top:0.8rem;">
+        Only the wallet named as a listing's <b>target account</b> can buy it -- that's what keeps
+        this marketplace from being usable to purchase "leverage" against someone else's wallet.
+        If you'd rather pay from a different wallet (an ops address, a team multisig, an exchange's
+        custody desk) than the one you believe is vulnerable, authorize it here. Only the target
+        account itself can grant or revoke this.
+      </p>
+      <div class="flex" style="margin-top:0.6rem;">
+        <div class="grow"><label>Delegate address</label><input id="delegate-addr" placeholder="0x..." /></div>
+        <div style="align-self:flex-end;" class="flex">
+          <button class="primary small" id="authorizeBtn">Authorize</button>
+          <button class="danger-ghost small" id="revokeBtn">Revoke</button>
+        </div>
+      </div>
+    </details>
+
+    <div class="flex" style="justify-content:space-between;margin-bottom:0.25rem;">
       <h2 style="margin:0;font-size:1rem;">Listings</h2>
-      <button id="refreshBtn">Refresh</button>
+      <button id="refreshBtn" class="small">↻ Refresh</button>
     </div>
-    <div class="grid" id="listingsGrid"><p class="muted">Connect a wallet and set a contract address to load listings.</p></div>
+    <div id="listingsRoot"><div class="empty-state">Connect a wallet and set a contract address to load listings.</div></div>
   </section>
 
   <section id="tab-sell" hidden>
     <div class="panel">
-      <h2>Create a listing</h2>
+      <h2>📤 Create a listing</h2>
       <label>Target account (the allegedly-vulnerable signer's address)</label>
       <input id="f-target" placeholder="0x..." />
+      <p class="hint">This is the <b>only</b> wallet (plus anyone it explicitly authorizes) that will
+        be allowed to purchase this listing -- so make sure it's the account actually affected, not
+        just any interested party.</p>
       <label>Title (public)</label>
       <input id="f-title" placeholder="e.g. Example Wallet signing service" />
       <div class="flex">
@@ -239,7 +368,7 @@
       <input id="f-price" placeholder="0.01" />
       <label>Full finding (hidden until purchase + successful reveal)</label>
       <textarea id="f-finding" placeholder="Describe the nonce-reuse evidence, affected transactions, remediation, etc."></textarea>
-      <p class="muted" style="font-size:0.8rem;">
+      <p class="hint">
         Only <code>keccak256(finding)</code> is submitted now. The full text is only ever sent
         on-chain later, inside <code>reveal()</code>, after a buyer has paid.
       </p>
@@ -247,7 +376,7 @@
     </div>
 
     <div class="panel" style="margin-top:1rem;">
-      <h2>Reveal (seller: after a listing is purchased)</h2>
+      <h2>🔓 Reveal <span class="muted" style="font-weight:400;font-size:0.8rem;">(seller: after a listing is purchased)</span></h2>
       <label>Listing ID</label>
       <input id="rv-id" placeholder="0" />
       <label>Full finding text (must match the commitment)</label>
@@ -267,7 +396,7 @@
       </div>
       <label>s2</label>
       <input id="rv-s2" />
-      <p class="muted" style="font-size:0.8rem;">Tip: use the "Simulate Vulnerable Target" tab to generate a genuine
+      <p class="hint">Tip: use the "Simulate Vulnerable Target" tab to generate a genuine
         nonce-reuse pair, then click "Send to reveal form" there.</p>
       <button class="primary" id="revealBtn">Submit Reveal</button>
     </div>
@@ -275,10 +404,11 @@
 
   <section id="tab-agents" hidden>
     <div class="panel">
-      <h2>Buyer Agent (autonomous)</h2>
-      <p class="muted">A simple deterministic purchasing agent: scans listings and auto-purchases
-        anything matching its rule. This demonstrates agent-to-agent commerce -- no human clicks
-        "buy" for a matching listing.</p>
+      <h2>🤖 Buyer Agent <span class="muted" style="font-weight:400;font-size:0.8rem;">(autonomous)</span></h2>
+      <p class="hint">A simple deterministic purchasing agent: scans listings and auto-purchases
+        anything matching its rule <i>and</i> where the connected wallet is actually eligible to buy
+        (the on-chain contract enforces this either way). This demonstrates agent-to-agent commerce --
+        no human clicks "buy" for a matching listing.</p>
       <label>Rule: purchase listings where...</label>
       <div class="flex">
         <div class="grow"><label>category contains</label><input id="agent-category" value="ECDSA Nonce Reuse" /></div>
@@ -294,8 +424,8 @@
 
   <section id="tab-vulnerable" hidden>
     <div class="panel">
-      <h2>Simulate a vulnerable target (demo data only)</h2>
-      <p class="muted">
+      <h2>🧪 Simulate a vulnerable target <span class="muted" style="font-weight:400;font-size:0.8rem;">(demo data only)</span></h2>
+      <p class="hint">
         Real signers derive each signature's nonce deterministically from the message
         (RFC&nbsp;6979) specifically so nonces never repeat. To have something real to disclose in
         this demo, this generates a synthetic "target" keypair and a toy signer that
@@ -303,7 +433,7 @@
         browser, using <code>toy-vulnerable-signer.js</code> (no real key, no real funds, never
         sent anywhere). This is exactly the bug class the marketplace exists to disclose.
       </p>
-      <button id="genTargetBtn">Generate synthetic vulnerable target</button>
+      <button class="primary" id="genTargetBtn">Generate synthetic vulnerable target</button>
       <div id="vulnOutput" style="margin-top:0.9rem;"></div>
     </div>
   </section>
@@ -314,10 +444,71 @@
   </div>
 </main>
 
+<div id="toastHost"></div>
+<div id="modalHost" hidden>
+  <div class="modal-box">
+    <h3 id="modalTitle"></h3>
+    <p id="modalBody"></p>
+    <div class="modal-actions">
+      <button id="modalCancelBtn">Cancel</button>
+      <button class="primary" id="modalConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const STATUS_NAMES = ["Listed", "Escrowed", "Verified", "Failed", "Refunded", "Cancelled"];
 
 let provider, signer, contract, currentAddress;
+
+// ---------- toast / modal helpers (replace alert()) ----------
+function toast(msg, type = 'info', ms = 4800) {
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.25s, transform 0.25s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(12px)';
+    setTimeout(() => el.remove(), 260);
+  }, ms);
+}
+function confirmDialog(title, body) {
+  return new Promise((resolve) => {
+    const host = document.getElementById('modalHost');
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').textContent = body;
+    host.hidden = false;
+    const cancelBtn = document.getElementById('modalCancelBtn');
+    const okBtn = document.getElementById('modalConfirmBtn');
+    function cleanup(result) {
+      host.hidden = true;
+      cancelBtn.removeEventListener('click', onCancel);
+      okBtn.removeEventListener('click', onOk);
+      resolve(result);
+    }
+    function onCancel() { cleanup(false); }
+    function onOk() { cleanup(true); }
+    cancelBtn.addEventListener('click', onCancel);
+    okBtn.addEventListener('click', onOk);
+  });
+}
+function withLoading(btn, labelWhileLoading, fn) {
+  return async (...args) => {
+    const original = btn.textContent;
+    btn.classList.add('loading');
+    btn.disabled = true;
+    try {
+      await fn(...args);
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  };
+}
 
 function log(elId, msg) {
   const el = document.getElementById(elId);
@@ -340,11 +531,25 @@ document.querySelectorAll('.tabs button').forEach(btn => {
 // ---------- contract address persistence ----------
 const addrInput = document.getElementById('contractAddr');
 addrInput.value = localStorage.getItem('bbb_contract_address') || '';
+updateContractPill();
 document.getElementById('saveAddrBtn').addEventListener('click', () => {
-  localStorage.setItem('bbb_contract_address', addrInput.value.trim());
+  const v = addrInput.value.trim();
+  if (v && !ethers.isAddress(v)) {
+    toast('That does not look like a valid contract address.', 'error');
+    return;
+  }
+  localStorage.setItem('bbb_contract_address', v);
+  updateContractPill();
   initContract();
   loadListings();
+  toast('Contract address saved.', 'success', 2200);
 });
+function updateContractPill() {
+  const pill = document.getElementById('contractStatusPill');
+  const v = addrInput.value.trim();
+  if (!v) { pill.textContent = 'not set'; return; }
+  pill.textContent = `${v.slice(0,6)}...${v.slice(-4)}`;
+}
 
 // ---------- wallet connect ----------
 async function refreshWalletState() {
@@ -355,13 +560,16 @@ async function refreshWalletState() {
     signer = null;
     contract = null;
     document.getElementById('netPill').textContent = 'not connected';
+    document.getElementById('netPill').className = 'pill';
     document.getElementById('connectBtn').textContent = 'Connect Wallet';
     return;
   }
   signer = await provider.getSigner();
   currentAddress = await signer.getAddress();
   const net = await provider.getNetwork();
-  document.getElementById('netPill').textContent = `${currentAddress.slice(0,6)}...${currentAddress.slice(-4)} · chain ${net.chainId}`;
+  const pill = document.getElementById('netPill');
+  pill.textContent = `${currentAddress.slice(0,6)}...${currentAddress.slice(-4)} · chain ${net.chainId}`;
+  pill.className = 'pill';
   document.getElementById('connectBtn').textContent = `Connected (${accounts.length} acct${accounts.length > 1 ? 's' : ''}) -- click to manage`;
   initContract();
   loadListings();
@@ -369,7 +577,7 @@ async function refreshWalletState() {
 
 document.getElementById('connectBtn').addEventListener('click', async () => {
   if (!window.ethereum) {
-    alert('No injected wallet found. Install MetaMask (or another EVM wallet) to interact with a real testnet deployment.');
+    toast('No injected wallet found. Install MetaMask (or another EVM wallet) to interact with a real testnet deployment.', 'error');
     return;
   }
   if (!provider) provider = new ethers.BrowserProvider(window.ethereum);
@@ -408,30 +616,102 @@ function initContract() {
   }
 }
 
+// ---------- delegate authorization ----------
+document.getElementById('authorizeBtn').addEventListener('click', withLoading(
+  document.getElementById('authorizeBtn'), 'Authorizing...', async () => {
+  if (!contract) return toast('Connect wallet + set contract address first.', 'error');
+  const delegate = document.getElementById('delegate-addr').value.trim();
+  if (!ethers.isAddress(delegate)) return toast('Enter a valid delegate address.', 'error');
+  try {
+    const tx = await contract.authorizeBuyer(delegate);
+    await tx.wait();
+    toast(`Authorized ${delegate.slice(0,8)}... to buy listings that target your address.`, 'success');
+    loadListings();
+  } catch (e) {
+    toast('authorizeBuyer failed: ' + (e.shortMessage || e.message || e), 'error');
+  }
+}));
+document.getElementById('revokeBtn').addEventListener('click', withLoading(
+  document.getElementById('revokeBtn'), 'Revoking...', async () => {
+  if (!contract) return toast('Connect wallet + set contract address first.', 'error');
+  const delegate = document.getElementById('delegate-addr').value.trim();
+  if (!ethers.isAddress(delegate)) return toast('Enter a valid delegate address.', 'error');
+  try {
+    const tx = await contract.revokeBuyer(delegate);
+    await tx.wait();
+    toast(`Revoked ${delegate.slice(0,8)}...'s purchase delegation.`, 'success');
+    loadListings();
+  } catch (e) {
+    toast('revokeBuyer failed: ' + (e.shortMessage || e.message || e), 'error');
+  }
+}));
+
 // ---------- marketplace ----------
 async function loadListings() {
-  const grid = document.getElementById('listingsGrid');
+  const root = document.getElementById('listingsRoot');
   if (!contract) {
-    grid.innerHTML = '<p class="muted">Connect a wallet and set a contract address to load listings.</p>';
+    root.innerHTML = '<div class="empty-state">Connect a wallet and set a contract address to load listings.</div>';
     return;
   }
-  grid.innerHTML = '<p class="muted">Loading...</p>';
+  root.innerHTML = '<div class="grid">' + '<div class="skeleton"></div>'.repeat(3) + '</div>';
   try {
     const count = await contract.listingCount();
-    const cards = [];
+    const items = [];
     for (let i = 0n; i < count; i++) {
       const l = await contract.getListing(i);
       const rep = await contract.reputationScoreBps(l.seller);
-      cards.push(renderCard(i, l, rep));
+      const isOwner = currentAddress && l.seller.toLowerCase() === currentAddress.toLowerCase();
+      const isBuyer = currentAddress && l.buyer && l.buyer !== ethers.ZeroAddress && l.buyer.toLowerCase() === currentAddress.toLowerCase();
+      let eligible = false;
+      if (currentAddress && !isOwner) {
+        try { eligible = await contract.isEligibleBuyer(i, currentAddress); } catch (e) { eligible = false; }
+      }
+      items.push({ id: i, l, rep, isOwner, isBuyer, eligible });
     }
-    grid.innerHTML = cards.length ? cards.join('') : '<p class="muted">No listings yet -- create one in the "Sell a Finding" tab.</p>';
+
+    if (!items.length) {
+      root.innerHTML = '<div class="empty-state">No listings yet -- create one in the "Sell a Finding" tab.</div>';
+      return;
+    }
+
+    const yours = items.filter(x => x.isOwner);
+    const canBuy = items.filter(x => !x.isOwner && Number(x.l.status) === 0 && x.eligible);
+    const yourPurchases = items.filter(x => !x.isOwner && x.isBuyer);
+    const locked = items.filter(x => !x.isOwner && !x.isBuyer && Number(x.l.status) === 0 && !x.eligible);
+    const other = items.filter(x => !x.isOwner && !x.isBuyer && Number(x.l.status) !== 0 &&
+      !(x.eligible && Number(x.l.status) === 0));
+
+    let html = '';
+    html += section('🎯 Affects your wallet -- you can buy', canBuy,
+      'These listings name your connected address (or an account that has authorized it) as the target. You are eligible to purchase.', true);
+    html += section('📤 Your listings', yours,
+      'Listings you created as the seller. You cannot purchase your own listing.', true);
+    html += section('🧾 Your purchases', yourPurchases,
+      'Listings you have bought into escrow or already resolved.', true);
+    html += section('🔒 Other listings (not eligible)', locked,
+      "Public metadata only, purchase disabled. Only the address named as \"target\" (or a delegate that address has authorized) can buy a listing -- so browsing here for something to buy as leverage against someone else's wallet will not work.", false);
+    html += section('📚 Resolved / in progress (not yours)', other,
+      'Listings belonging to other sellers/buyers, shown for transparency.', false);
+
+    root.innerHTML = html || '<div class="empty-state">Nothing to show yet.</div>';
     attachCardHandlers();
   } catch (e) {
     console.error(e);
-    grid.innerHTML = `<p class="muted">Couldn't load listings: ${e.message || e}</p>`;
+    root.innerHTML = `<div class="empty-state">Couldn't load listings: ${escapeHtml(e.message || String(e))}</div>`;
   }
 }
 document.getElementById('refreshBtn').addEventListener('click', loadListings);
+
+function section(title, items, desc, expanded) {
+  if (!items.length) return '';
+  return `
+    <div class="section-head">
+      <h3>${title} <span class="count">${items.length}</span></h3>
+    </div>
+    <p class="section-desc">${desc}</p>
+    <div class="grid">${items.map(x => renderCard(x)).join('')}</div>
+  `;
+}
 
 function sevClass(sev) {
   const s = (sev || '').toLowerCase();
@@ -441,21 +721,37 @@ function sevClass(sev) {
   return 'default';
 }
 
-function renderCard(id, l, repBps) {
+function renderCard({ id, l, rep, isOwner, isBuyer, eligible }) {
   const status = STATUS_NAMES[Number(l.status)] || 'Unknown';
   const priceEth = ethers.formatEther(l.price);
-  const repPct = (Number(repBps) / 100).toFixed(0);
+  const repPct = (Number(rep) / 100).toFixed(0);
   const disclosed = status === 'Verified' && l.finding && l.finding.length > 0;
+  const cardClass = isOwner ? 'yours' : (eligible && status === 'Listed') ? 'eligible' : (!eligible && !isOwner && !isBuyer && status === 'Listed') ? 'locked' : '';
+
+  let ownerBadge = '';
+  if (isOwner) ownerBadge = `<span class="badge yours">Your listing</span>`;
+  else if (isBuyer) ownerBadge = `<span class="badge eligible">Your purchase</span>`;
+  else if (eligible && status === 'Listed') ownerBadge = `<span class="badge eligible">Eligible</span>`;
+
   let actionHtml = '';
   if (status === 'Listed') {
-    actionHtml = `<button class="primary buy-btn" data-id="${id}" data-price="${l.price}">Buy for ${priceEth} ETH</button>`;
+    if (isOwner) {
+      actionHtml = `<button class="danger-ghost cancel-btn" data-id="${id}">Cancel listing (reclaim stake)</button>`;
+    } else if (eligible) {
+      actionHtml = `<button class="primary buy-btn" data-id="${id}" data-price="${l.price}">Buy for ${priceEth} ETH</button>`;
+    } else {
+      actionHtml = `<div class="lock-note">🔒 Not eligible to purchase -- only <span class="mono">${l.targetAccount.slice(0,8)}...${l.targetAccount.slice(-4)}</span> or an address it has authorized can buy this.</div>`;
+    }
   } else if (status === 'Escrowed') {
-    actionHtml = `<button class="timeout-btn" data-id="${id}">Claim timeout (if reveal window passed)</button>`;
+    actionHtml = `<button class="timeout-btn small" data-id="${id}">Claim timeout (if reveal window passed)</button>`;
   }
+
   return `
-  <div class="card">
-    <div class="row"><span class="badge ${sevClass(l.severity)}">${l.severity}</span><span class="badge ${status === 'Verified' ? 'verified' : status === 'Failed' ? 'failed' : 'locked'}">${status}</span></div>
-    <div class="title">${escapeHtml(l.title || '(untitled)')}</div>
+  <div class="card ${cardClass}">
+    <div class="row"><span class="badge ${sevClass(l.severity)}">${escapeHtml(l.severity)}</span>
+      <span class="flex" style="gap:0.35rem;">${ownerBadge}<span class="badge ${status === 'Verified' ? 'verified' : status === 'Failed' ? 'failed' : 'locked'}">${status}</span></span>
+    </div>
+    <div class="title">${escapeHtml(l.title || '(untitled)')} <span class="muted" style="font-weight:400;font-size:0.78rem;">#${id}</span></div>
     <div class="row"><span>Category</span><span>${escapeHtml(l.category)}</span></div>
     <div class="row"><span>Target</span><span class="mono">${l.targetAccount.slice(0,8)}...${l.targetAccount.slice(-4)}</span></div>
     <div class="row"><span>Seller</span><span class="mono">${l.seller.slice(0,8)}...${l.seller.slice(-4)} (${repPct}%)</span></div>
@@ -473,39 +769,55 @@ function escapeHtml(s) {
 
 function attachCardHandlers() {
   document.querySelectorAll('.buy-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', withLoading(btn, 'Confirm in wallet...', async () => {
       const id = btn.dataset.id;
       const price = btn.dataset.price;
-      btn.disabled = true;
-      btn.textContent = 'Confirm in wallet...';
+      const ok = await confirmDialog('Confirm purchase', `Pay ${ethers.formatEther(price)} ETH into escrow for listing #${id}? You'll be refunded in full (plus the seller's slashed stake) if the seller's reveal doesn't check out.`);
+      if (!ok) return;
       try {
         const tx = await contract.purchase(id, { value: price });
-        btn.textContent = 'Pending...';
         await tx.wait();
+        toast(`Purchased listing #${id}. Escrowed -- waiting on the seller's reveal.`, 'success');
         await loadListings();
       } catch (e) {
-        alert('Purchase failed: ' + (e.shortMessage || e.message || e));
-        btn.disabled = false;
+        toast('Purchase failed: ' + (e.shortMessage || e.message || e), 'error');
       }
-    });
+    }));
   });
   document.querySelectorAll('.timeout-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', withLoading(btn, 'Claiming...', async () => {
       const id = btn.dataset.id;
       try {
         const tx = await contract.claimTimeout(id);
         await tx.wait();
+        toast(`Timeout claimed for listing #${id}. Buyer refunded, seller stake slashed.`, 'success');
         await loadListings();
       } catch (e) {
-        alert('claimTimeout failed: ' + (e.shortMessage || e.message || e));
+        toast('claimTimeout failed: ' + (e.shortMessage || e.message || e), 'error');
       }
-    });
+    }));
+  });
+  document.querySelectorAll('.cancel-btn').forEach(btn => {
+    btn.addEventListener('click', withLoading(btn, 'Cancelling...', async () => {
+      const id = btn.dataset.id;
+      const ok = await confirmDialog('Cancel listing', `Withdraw listing #${id} and reclaim your stake? This only works before anyone has purchased it.`);
+      if (!ok) return;
+      try {
+        const tx = await contract.cancelListing(id);
+        await tx.wait();
+        toast(`Listing #${id} cancelled, stake refunded.`, 'success');
+        await loadListings();
+      } catch (e) {
+        toast('cancelListing failed: ' + (e.shortMessage || e.message || e), 'error');
+      }
+    }));
   });
 }
 
 // ---------- create listing ----------
-document.getElementById('createListingBtn').addEventListener('click', async () => {
-  if (!contract) return alert('Connect wallet + set contract address first.');
+document.getElementById('createListingBtn').addEventListener('click', withLoading(
+  document.getElementById('createListingBtn'), 'Submitting...', async () => {
+  if (!contract) return toast('Connect wallet + set contract address first.', 'error');
   const target = document.getElementById('f-target').value.trim();
   const title = document.getElementById('f-title').value.trim();
   const category = document.getElementById('f-category').value;
@@ -513,9 +825,9 @@ document.getElementById('createListingBtn').addEventListener('click', async () =
   const priceEth = document.getElementById('f-price').value.trim();
   const finding = document.getElementById('f-finding').value;
 
-  if (!ethers.isAddress(target)) return alert('Enter a valid target address.');
-  if (!priceEth || Number(priceEth) <= 0) return alert('Enter a price > 0.');
-  if (!finding.trim()) return alert('Enter the full finding text (it will be committed by hash only, not revealed yet).');
+  if (!ethers.isAddress(target)) return toast('Enter a valid target address.', 'error');
+  if (!priceEth || Number(priceEth) <= 0) return toast('Enter a price > 0.', 'error');
+  if (!finding.trim()) return toast('Enter the full finding text (it will be committed by hash only, not revealed yet).', 'error');
 
   const price = ethers.parseEther(priceEth);
   const stake = price * 1000n / 10000n;
@@ -524,17 +836,19 @@ document.getElementById('createListingBtn').addEventListener('click', async () =
   try {
     const tx = await contract.createListing(target, price, category, severity, title, commitmentHash, { value: stake });
     await tx.wait();
-    alert('Listing created.');
+    toast('Listing created.', 'success');
     document.getElementById('f-finding').value = '';
+    document.querySelector('[data-tab="market"]').click();
     loadListings();
   } catch (e) {
-    alert('createListing failed: ' + (e.shortMessage || e.message || e));
+    toast('createListing failed: ' + (e.shortMessage || e.message || e), 'error');
   }
-});
+}));
 
 // ---------- reveal ----------
-document.getElementById('revealBtn').addEventListener('click', async () => {
-  if (!contract) return alert('Connect wallet + set contract address first.');
+document.getElementById('revealBtn').addEventListener('click', withLoading(
+  document.getElementById('revealBtn'), 'Submitting...', async () => {
+  if (!contract) return toast('Connect wallet + set contract address first.', 'error');
   const id = document.getElementById('rv-id').value.trim();
   const finding = document.getElementById('rv-finding').value;
   const h1 = document.getElementById('rv-h1').value.trim();
@@ -548,16 +862,18 @@ document.getElementById('revealBtn').addEventListener('click', async () => {
   try {
     const tx = await contract.reveal(id, finding, h1, v1, r, s1, h2, v2, s2);
     await tx.wait();
-    alert('Reveal submitted -- check the listing status in the Marketplace tab.');
+    toast('Reveal submitted -- check the listing status in the Marketplace tab.', 'success');
+    document.querySelector('[data-tab="market"]').click();
     loadListings();
   } catch (e) {
-    alert('reveal failed: ' + (e.shortMessage || e.message || e));
+    toast('reveal failed: ' + (e.shortMessage || e.message || e), 'error');
   }
-});
+}));
 
 // ---------- autonomous buyer agent ----------
-document.getElementById('agentScanBtn').addEventListener('click', async () => {
-  if (!contract) return alert('Connect wallet + set contract address first.');
+document.getElementById('agentScanBtn').addEventListener('click', withLoading(
+  document.getElementById('agentScanBtn'), 'Scanning...', async () => {
+  if (!contract) return toast('Connect wallet + set contract address first.', 'error');
   const wantCategory = document.getElementById('agent-category').value.trim().toLowerCase();
   const wantSeverity = document.getElementById('agent-severity').value.trim().toLowerCase();
   const maxPrice = ethers.parseEther(document.getElementById('agent-maxprice').value.trim() || '0');
@@ -577,6 +893,14 @@ document.getElementById('agentScanBtn').addEventListener('click', async () => {
       log('agentLog', `#${i}: "${l.title}" -- skip (does not match rule)`);
       continue;
     }
+    let eligible = true;
+    if (currentAddress) {
+      try { eligible = await contract.isEligibleBuyer(i, currentAddress); } catch (e) { eligible = true; }
+    }
+    if (!eligible) {
+      log('agentLog', `#${i}: "${l.title}" -- matches rule, but this wallet is not the target account (or an authorized delegate) -- skipping. The contract would reject it anyway.`);
+      continue;
+    }
     log('agentLog', `#${i}: "${l.title}" -- MATCH. Auto-purchasing for ${ethers.formatEther(l.price)} ETH...`);
     try {
       const tx = await contract.purchase(i, { value: l.price });
@@ -589,7 +913,7 @@ document.getElementById('agentScanBtn').addEventListener('click', async () => {
   }
   log('agentLog', `Done. Auto-purchased ${purchased} listing(s).`);
   loadListings();
-});
+}));
 
 // ---------- vulnerable target simulator ----------
 document.getElementById('genTargetBtn').addEventListener('click', () => {
@@ -614,7 +938,8 @@ document.getElementById('genTargetBtn').addEventListener('click', () => {
 Synthetic target private key (demo only, never use for anything real):
 ${priv}
 
-Target address (use this as "Target account" when creating a listing):
+Target address (use this as "Target account" when creating a listing --
+in the demo, connect a wallet using this key as "buyer" to see the eligible-purchase flow):
 ${addr}
 
 msgHash1: ${h1}
@@ -642,12 +967,14 @@ s2: ${sig2.s}
     document.getElementById('rv-s2').value = sig2.s;
     document.getElementById('rv-finding').value = findingText;
     document.querySelector('[data-tab="sell"]').click();
+    toast('Evidence sent to the Reveal form.', 'info', 2600);
   });
   document.getElementById('sendFindingToSellBtn').addEventListener('click', () => {
     document.getElementById('f-target').value = addr;
     document.getElementById('f-finding').value = findingText;
     document.getElementById('f-title').value = 'Synthetic demo target (nonce reuse)';
     document.querySelector('[data-tab="sell"]').click();
+    toast('Finding sent to the Sell form.', 'info', 2600);
   });
 });
 

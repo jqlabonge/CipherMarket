@@ -74,12 +74,17 @@ const STAKE = PRICE * 1000n / 10000n; // 10%
 
 describe("BlackBoxBazaar", function () {
   let seller, buyer, other;
-  let targetPriv, targetAddr;
+  let targetPriv, targetAddr, targetSigner;
 
   beforeEach(async function () {
     [seller, buyer, other] = await ethers.getSigners();
     targetPriv = '0x' + BigInt(ethers.hexlify(ethers.randomBytes(32))).toString(16).padStart(64, '0');
     targetAddr = addressFromPriv(targetPriv);
+    // The buyer-eligibility check requires msg.sender to actually BE the
+    // target account (or its authorized delegate) -- so tests need a real,
+    // funded signer for the synthetic target key, not just its address.
+    targetSigner = new ethers.Wallet(targetPriv, ethers.provider);
+    await other.sendTransaction({ to: targetAddr, value: ethers.parseEther("2") });
   });
 
   async function deploy() {
@@ -103,7 +108,7 @@ describe("BlackBoxBazaar", function () {
     const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes(findingText));
     await createListing(bazaar, commitmentHash);
 
-    await bazaar.connect(buyer).purchase(0, { value: PRICE });
+    await bazaar.connect(targetSigner).purchase(0, { value: PRICE });
 
     const h1 = ethers.keccak256(ethers.toUtf8Bytes("message one"));
     const h2 = ethers.keccak256(ethers.toUtf8Bytes("message two"));
@@ -135,7 +140,7 @@ describe("BlackBoxBazaar", function () {
     const findingText = "Fake finding.";
     const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes(findingText));
     await createListing(bazaar, commitmentHash);
-    await bazaar.connect(buyer).purchase(0, { value: PRICE });
+    await bazaar.connect(targetSigner).purchase(0, { value: PRICE });
 
     // Sign with an unrelated key -- does NOT prove control of targetAddr.
     const impostorPriv = '0x' + BigInt(ethers.hexlify(ethers.randomBytes(32))).toString(16).padStart(64, '0');
@@ -145,9 +150,10 @@ describe("BlackBoxBazaar", function () {
     const sig1 = rawSign(impostorPriv, h1, k);
     const sig2 = rawSign(impostorPriv, h2, k);
 
-    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
-    await bazaar.connect(seller).reveal(0, findingText, h1, sig1.v, sig1.r, sig1.s, h2, sig2.v, sig2.s);
-    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const buyerBalanceBefore = await ethers.provider.getBalance(targetAddr);
+    const tx = await bazaar.connect(seller).reveal(0, findingText, h1, sig1.v, sig1.r, sig1.s, h2, sig2.v, sig2.s);
+    await tx.wait();
+    const buyerBalanceAfter = await ethers.provider.getBalance(targetAddr);
 
     expect(buyerBalanceAfter).to.equal(buyerBalanceBefore + PRICE + STAKE);
 
@@ -163,7 +169,7 @@ describe("BlackBoxBazaar", function () {
     const bazaar = await deploy();
     const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes("the real finding"));
     await createListing(bazaar, commitmentHash);
-    await bazaar.connect(buyer).purchase(0, { value: PRICE });
+    await bazaar.connect(targetSigner).purchase(0, { value: PRICE });
 
     const h1 = ethers.keccak256(ethers.toUtf8Bytes("message one"));
     const h2 = ethers.keccak256(ethers.toUtf8Bytes("message two"));
@@ -182,13 +188,13 @@ describe("BlackBoxBazaar", function () {
     const bazaar = await deploy();
     const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes("finding"));
     await createListing(bazaar, commitmentHash);
-    await bazaar.connect(buyer).purchase(0, { value: PRICE });
+    await bazaar.connect(targetSigner).purchase(0, { value: PRICE });
 
     await time.increase(3600 + 1);
 
-    const buyerBalanceBefore = await ethers.provider.getBalance(buyer.address);
+    const buyerBalanceBefore = await ethers.provider.getBalance(targetAddr);
     await bazaar.connect(other).claimTimeout(0);
-    const buyerBalanceAfter = await ethers.provider.getBalance(buyer.address);
+    const buyerBalanceAfter = await ethers.provider.getBalance(targetAddr);
     expect(buyerBalanceAfter).to.equal(buyerBalanceBefore + PRICE + STAKE);
   });
 
@@ -211,7 +217,65 @@ describe("BlackBoxBazaar", function () {
     const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes("finding"));
     await createListing(bazaar, commitmentHash);
     await expect(
-      bazaar.connect(buyer).purchase(0, { value: PRICE - 1n })
+      bazaar.connect(targetSigner).purchase(0, { value: PRICE - 1n })
     ).to.be.revertedWith("wrong price");
+  });
+
+  it("rejects a purchase from an address that is neither the target nor an authorized delegate", async function () {
+    const bazaar = await deploy();
+    const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes("finding"));
+    await createListing(bazaar, commitmentHash);
+    // `buyer` here is just a random Hardhat account with no relationship to
+    // targetAddr and no authorization -- this is exactly the "buying
+    // leverage against someone else's wallet" case the restriction exists
+    // to block.
+    await expect(
+      bazaar.connect(buyer).purchase(0, { value: PRICE })
+    ).to.be.revertedWith("only the target account or its authorized delegate may purchase");
+  });
+
+  it("rejects the seller buying their own listing", async function () {
+    const bazaar = await deploy();
+    const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes("finding"));
+    await createListing(bazaar, commitmentHash);
+    await expect(
+      bazaar.connect(seller).purchase(0, { value: PRICE })
+    ).to.be.revertedWith("seller cannot buy own listing");
+  });
+
+  it("lets the target account authorize a delegate wallet to purchase on its behalf", async function () {
+    const bazaar = await deploy();
+    const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes("finding"));
+    await createListing(bazaar, commitmentHash);
+
+    // `buyer` isn't eligible yet...
+    await expect(
+      bazaar.connect(buyer).purchase(0, { value: PRICE })
+    ).to.be.revertedWith("only the target account or its authorized delegate may purchase");
+
+    // ...until the target account explicitly authorizes it (e.g. an ops
+    // wallet, so the target never has to transact from the key the finding
+    // claims is compromised).
+    expect(await bazaar.isEligibleBuyer(0, buyer.address)).to.equal(false);
+    await bazaar.connect(targetSigner).authorizeBuyer(buyer.address);
+    expect(await bazaar.isEligibleBuyer(0, buyer.address)).to.equal(true);
+
+    await bazaar.connect(buyer).purchase(0, { value: PRICE });
+    const listing = await bazaar.getListing(0);
+    expect(listing.status).to.equal(1); // Escrowed
+    expect(listing.buyer).to.equal(buyer.address);
+  });
+
+  it("stops a revoked delegate from purchasing", async function () {
+    const bazaar = await deploy();
+    const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes("finding"));
+    await createListing(bazaar, commitmentHash);
+
+    await bazaar.connect(targetSigner).authorizeBuyer(buyer.address);
+    await bazaar.connect(targetSigner).revokeBuyer(buyer.address);
+
+    await expect(
+      bazaar.connect(buyer).purchase(0, { value: PRICE })
+    ).to.be.revertedWith("only the target account or its authorized delegate may purchase");
   });
 });
