@@ -1,0 +1,10 @@
+{
+  "name": "black-box-bazaar-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zero-dependency static frontend for The Black Box Bazaar. ethers.js is loaded from a CDN at runtime, so `npm install` has nothing to fetch.",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  }
+}

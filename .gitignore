@@ -1,0 +1,7 @@
+node_modules/
+.env
+hardhat/cache/
+hardhat/artifacts/
+hardhat/typechain-types/
+__pycache__/
+*.pyc
