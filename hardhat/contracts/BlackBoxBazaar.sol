@@ -21,9 +21,13 @@ pragma solidity ^0.8.24;
 ///         finding text itself is NOT stored yet -- buyers can't read what
 ///         they haven't paid for.
 ///      2. Buyer calls `purchase`, paying `price` into escrow, sight-unseen.
-///      3. Seller calls `reveal` with the full finding text plus the actual
+///      3. `reveal` is called with the full finding text plus the actual
 ///         cryptographic evidence: two (messageHash, v, s) pairs sharing one
-///         `r`. The contract:
+///         `r`. Not restricted to the seller -- anyone can submit it (see the
+///         note on `reveal` itself), which lets it be resubmitted automatically
+///         the instant a purchase confirms instead of waiting on a second,
+///         separately-signed transaction from the seller specifically. The
+///         contract:
 ///           a. checks `keccak256(findingText) == commitmentHash` -- proves
 ///              the revealed text is what was committed to at listing time
 ///              (the commitment is *not* proof of a real bug -- only proof
@@ -210,7 +214,18 @@ contract BlackBoxBazaar {
         emit Purchased(id, msg.sender, l.revealDeadline);
     }
 
-    /// @notice Seller reveals the full finding plus the nonce-reuse evidence.
+    /// @notice Reveals the full finding plus the nonce-reuse evidence, and pays out
+    ///         or slashes based purely on whether it checks out. Deliberately NOT
+    ///         restricted to the seller: the correctness of this function depends
+    ///         entirely on the ecrecover math below, never on who happens to call
+    ///         it, so restricting the caller would add friction (the seller's own
+    ///         wallet specifically has to be the one connected, in the exact
+    ///         browser/session that has the evidence, before this can go through)
+    ///         without adding any actual security. Anyone submitting evidence that
+    ///         doesn't check out still just gets rejected and the stake still gets
+    ///         slashed to the buyer -- an unauthorized caller can't force a false
+    ///         positive, only correctly relay evidence the seller already committed
+    ///         to at listing time.
     /// @param findingText The complete disclosure, must hash to the listing's commitmentHash.
     /// @param msgHash1,v1,s1 First signature: ecrecover(msgHash1, v1, r, s1) must equal targetAccount.
     /// @param msgHash2,v2,s2 Second signature over a DIFFERENT message, same shared `r`.
@@ -226,7 +241,7 @@ contract BlackBoxBazaar {
         bytes32 msgHash2,
         uint8 v2,
         bytes32 s2
-    ) external onlySeller(id) nonReentrant {
+    ) external nonReentrant {
         Listing storage l = listings[id];
         require(l.status == Status.Escrowed, "not awaiting reveal");
         require(block.timestamp <= l.revealDeadline, "reveal window passed");

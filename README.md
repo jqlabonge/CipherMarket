@@ -17,13 +17,17 @@ mathematical answer the contract itself can check with nothing but `ecrecover`.
    authorized via `authorizeBuyer()` -- can call `purchase()` and pay into escrow.
    Enforced on-chain (`isEligibleBuyer`), not just hidden in the UI. This keeps the
    marketplace from being a way to buy attack leverage against someone else's wallet.
-3. **Reveal.** Seller submits the full finding plus two `(messageHash, v, s)`
-   signatures sharing one `r`. The contract checks the hash matches the commitment,
-   the two messages differ, and `ecrecover` on both recovers to `targetAccount`. If
-   it all checks out, escrow (price + stake) pays the seller and the finding is
-   disclosed on-chain. If not, the buyer is refunded in full and gets the seller's
-   slashed stake. If the seller never reveals within the window, anyone can call
-   `claimTimeout()`, which resolves it the same way as a failed reveal.
+3. **Reveal.** The full finding plus two `(messageHash, v, s)` signatures sharing
+   one `r` get submitted on-chain -- automatically, usually within seconds of the
+   purchase confirming. `reveal()` deliberately isn't restricted to the seller:
+   the check is pure math (see below), so it doesn't matter who calls it, only
+   whether the evidence is genuine. The contract checks the hash matches the
+   commitment, the two messages differ, and `ecrecover` on both recovers to
+   `targetAccount`. If it all checks out, escrow (price + stake) pays the seller
+   and the finding is disclosed on-chain. If not, the buyer is refunded in full
+   and gets the seller's slashed stake. If nobody reveals within the window,
+   anyone can call `claimTimeout()`, which resolves it the same way as a failed
+   reveal.
 
 No off-chain oracle and no human referee are involved -- `ecrecover` is the entire
 trust mechanism.
@@ -53,6 +57,18 @@ would leak it to anyone watching the mempool before the seller got paid).
   paid for first/exclusive access, not permanent secrecy.
 - `purchase`, `reveal`, `cancelListing`, and `claimTimeout` follow
   checks-effects-interactions, plus a `nonReentrant` guard as defense-in-depth.
+- `reveal()` accepts a call from anyone, not just the seller -- safe because
+  correctness never depended on the caller, only on the math. An unauthorized
+  caller submitting real evidence just relays what the seller already committed
+  to; submitting fake evidence still fails the check and still gets the *seller's*
+  stake slashed to the buyer, exactly like a seller-submitted bad reveal would.
+  This is what lets the frontend auto-submit the reveal the instant a purchase
+  confirms, from whichever wallet is already connected, instead of requiring the
+  seller's own wallet to reconnect first. The one honest limit: this only makes
+  it *instant* when the evidence-holder and the submitter are reachable from the
+  same place (e.g. one browser demoing both sides) -- in a real two-stranger
+  deployment, the evidence still has to reach whoever submits it somehow; no
+  contract change removes that.
 
 ## Biggest design decision
 

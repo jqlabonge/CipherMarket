@@ -381,6 +381,16 @@
   .activity-item .time { color: var(--muted2); font-size: 0.72rem; margin-left: auto; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .live-dot { width:7px; height:7px; border-radius:50%; background: var(--success); display:inline-block; animation: pulse 1.6s ease-in-out infinite; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  /* Small spinner for "the automatic reveal is in flight" states -- reuses
+     the same spin keyframe as the button loading spinner, just sized for
+     inline text so a card can show "this is actively happening" rather than
+     a flat static sentence while the ~5-15s reveal transaction is pending. */
+  .pending-spinner {
+    display: inline-block; width: 11px; height: 11px; margin-right: 0.35rem;
+    vertical-align: -1px; border-radius: 50%;
+    border: 2px solid rgba(20,20,30,0.15); border-top-color: var(--accent2);
+    animation: spin 0.7s linear infinite;
+  }
 
   /* status widget */
   .status-widget { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; }
@@ -663,11 +673,14 @@
         <li>
           <details class="step">
             <summary><b>3. Reveal</b> <span class="muted">-- automatic, math decides, not a referee</span></summary>
-            <p>The moment a purchase lands, the seller's browser automatically submits the full
-              finding plus two ECDSA signatures sharing one <code>r</code> -- no manual step, no
-              judgment call. The contract runs <code>ecrecover</code> on both. Match &rarr; escrow
-              (price + stake) pays the seller and the finding is disclosed on-chain. Mismatch
-              &rarr; buyer is refunded in full and receives the seller's slashed stake.</p>
+            <p>The moment a purchase confirms, the full finding plus two ECDSA signatures sharing
+              one <code>r</code> get submitted on-chain automatically -- usually from the buyer's
+              own wallet, right after paying, since <code>reveal()</code> isn't restricted to the
+              seller specifically: the check is pure math, so it doesn't matter who submits it,
+              only whether it's genuine. No manual step, no judgment call. The contract runs
+              <code>ecrecover</code> on both. Match &rarr; escrow (price + stake) pays the seller
+              and the finding is disclosed on-chain. Mismatch &rarr; buyer is refunded in full and
+              receives the seller's slashed stake.</p>
           </details>
         </li>
         <li>
@@ -1624,13 +1637,13 @@ function renderCard({ id, l, rep, isOwner, isBuyer, eligible, eligibleError, add
       // it the instant a purchase is seen live, the instant it (re)connects as
       // the seller, and again every ~20s as a safety net, all with zero clicks.
       // This button only exists for the rare case all of those got missed.
-      actionHtml = `<div class="lock-note">Purchased -- your reveal is being submitted automatically (usually within a few seconds).</div>` +
+      actionHtml = `<div class="lock-note"><span class="pending-spinner"></span>Purchased -- your reveal is being submitted automatically (usually within 5-15 seconds).</div>` +
         `<button class="small manual-reveal-btn" data-id="${id}" style="margin-top:0.4rem;">Still stuck? Retry reveal now</button>`;
     } else if (isOwner) {
       actionHtml = `<div class="lock-note">Purchased -- waiting to auto-reveal. Evidence for this listing wasn't found saved in this browser (e.g. a different tab or device created it); use the Reveal form under "Sell a Finding" with listing id ${id}.</div>` +
         `<button class="timeout-btn small" data-id="${id}" style="margin-top:0.4rem;">Claim timeout (if reveal window passed)</button>`;
     } else {
-      actionHtml = `<div class="lock-note">Purchased -- the seller's disclosure reveals automatically, no action on their end required. If the reveal window passes with nothing submitted, you get refunded and the seller's stake is slashed.</div>` +
+      actionHtml = `<div class="lock-note"><span class="pending-spinner"></span>Purchased -- the disclosure reveals automatically (usually within 5-15 seconds), no action needed on your end. If the reveal window passes with nothing submitted, you get refunded and the seller's stake is slashed.</div>` +
         `<button class="timeout-btn small" data-id="${id}" style="margin-top:0.4rem;">Claim timeout (if reveal window passed)</button>`;
     }
   }
@@ -1785,10 +1798,6 @@ function attachCardHandlers() {
           delete stored[id];
           localStorage.setItem(evidenceStorageKey(addrInput.value.trim()), JSON.stringify(stored));
           await loadListings();
-        } else if (result.reason === 'wrong-signer') {
-          // Checked BEFORE sending anything, so no MetaMask prompt and no gas
-          // spent for a doomed transaction -- just tell them what to do.
-          toast(`This listing's seller is ${shortAddr(result.seller)}, but you're connected as ${shortAddr(currentAddress)}. Switch MetaMask to the seller account and try again -- nothing was sent.`, 'error');
         } else {
           toast(`Can't submit reveal right now -- ${result.reason}.`, 'error');
         }
@@ -1818,12 +1827,35 @@ function attachCardHandlers() {
     btn.addEventListener('click', withLoading(btn, 'Confirm in wallet...', async () => {
       const id = btn.dataset.id;
       const price = btn.dataset.price;
-      const ok = await confirmDialog('Confirm purchase', `Pay ${ethers.formatEther(price)} ETH into escrow for listing #${id}? You'll be refunded in full (plus the seller's slashed stake) if the seller's reveal doesn't check out.`);
+      const ok = await confirmDialog('Confirm purchase', `Pay ${ethers.formatEther(price)} ETH into escrow for listing #${id}? You'll be refunded in full (plus the seller's slashed stake) if the reveal doesn't check out.`);
       if (!ok) return;
       try {
         const tx = await contract.purchase(id, { value: price });
         await tx.wait();
-        toast(`Purchased listing #${id}. Escrowed -- waiting on the seller's reveal.`, 'success');
+
+        // reveal() isn't restricted to the seller -- the ecrecover math is
+        // what proves the evidence is genuine, not who submits it (see
+        // BlackBoxBazaar.sol). So the instant this purchase confirms, try
+        // revealing right now using whatever wallet is already connected
+        // (this one), using evidence cached in this browser from listing
+        // creation -- no waiting on a second person/session/account-switch.
+        // The button's spinner (from withLoading) keeps running through this
+        // whole second step, so it reads as one continuous pending action
+        // rather than looking finished after just the purchase.
+        const evidence = getStoredEvidenceFor(id);
+        if (evidence) {
+          toast(`Purchased listing #${id}. Verifying the disclosure on-chain now...`, 'info', 6000);
+          const result = await trySendReveal(id, evidence);
+          if (result.sent && result.verified) {
+            toast(`Listing #${id} verified on-chain -- disclosure unlocked.`, 'success');
+          } else if (result.sent && result.failed) {
+            toast(`Listing #${id}: the evidence didn't check out (status: ${STATUS_NAMES[result.status]}) -- you were refunded plus the seller's slashed stake.`, 'error');
+          } else {
+            toast(`Purchased listing #${id}. Escrowed -- the automatic reveal couldn't be submitted just now (${result.reason}), it'll keep retrying in the background.`, 'info');
+          }
+        } else {
+          toast(`Purchased listing #${id}. Escrowed -- waiting on the disclosure to reveal automatically.`, 'success');
+        }
         await loadListings();
       } catch (e) {
         toast('Purchase failed: ' + (e.shortMessage || e.message || e), 'error');
@@ -2177,21 +2209,18 @@ document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
 }));
 
 /**
- * Submits reveal(id, ...evidence) -- but ONLY after confirming, with a fresh
- * on-chain read, that the currently-connected wallet actually IS this
- * listing's seller. reveal() is onlySeller, so calling it from any other
- * account is guaranteed to revert -- and a real transaction that reverts
- * still costs real gas once it's broadcast. Checking first means a
- * wrong-account attempt never reaches MetaMask at all: no signature prompt,
- * no gas spent, just a clear "wrong account" result returned to the caller.
+ * Submits reveal(id, ...evidence). reveal() is intentionally NOT restricted
+ * to the seller -- the ecrecover math is what proves the evidence is
+ * genuine, not who happens to submit it, so this can be sent from whichever
+ * wallet is currently connected (buyer, seller, anyone). That's what lets
+ * this fire immediately after a purchase confirms, from the buyer's own
+ * still-connected wallet, instead of requiring the seller's specific wallet
+ * to reconnect first.
  */
 async function trySendReveal(id, evidence) {
   if (!contract || !currentAddress) return { sent: false, reason: 'not connected' };
   const l = await contract.getListing(id);
   if (Number(l.status) !== 1) return { sent: false, reason: 'not awaiting reveal (status changed)' };
-  if (l.seller.toLowerCase() !== currentAddress.toLowerCase()) {
-    return { sent: false, reason: 'wrong-signer', seller: l.seller };
-  }
   const tx = await contract.reveal(id, evidence.findingText, evidence.h1, evidence.v1, evidence.r, evidence.s1, evidence.h2, evidence.v2, evidence.s2);
   await tx.wait();
   // reveal() does NOT revert on a mismatched finding/signature -- it settles
@@ -2225,8 +2254,6 @@ function armAutoReveal(id) {
         delete sellerAgentEvidence[key];
         saveEvidenceToStorage();
         loadListings();
-      } else if (result.reason === 'wrong-signer') {
-        log('sellerAgentLog', `Listing #${key} was purchased, but this browser is currently connected as a different account than the seller -- no transaction sent. Switch back to the seller account and use "Submit reveal now" on the listing card.`, 'skip');
       } else {
         log('sellerAgentLog', `Listing #${key} auto-reveal skipped -- ${result.reason}.`, 'skip');
       }
@@ -2273,12 +2300,6 @@ async function rearmPendingSellerReveals() {
             delete sellerAgentEvidence[key];
             delete stored[key];
             revealedNow++;
-          } else if (result.reason === 'wrong-signer') {
-            // Expected and harmless: this is almost always what happens right
-            // after buying, since you had to switch to the buyer account to
-            // do that. No transaction sent, no gas spent -- just a quiet skip.
-            // The "Submit reveal now" button on the card covers this once
-            // you're back on the seller account.
           } else {
             log('sellerAgentLog', `Listing #${key} reveal skipped -- ${result.reason}.`, 'skip');
           }
@@ -2345,6 +2366,20 @@ document.getElementById('agentScanBtn').addEventListener('click', withLoading(
       await tx.wait();
       purchased++;
       log('agentLog', `#${i}: purchased. tx ${tx.hash}`, 'success');
+
+      // Same as the manual Buy button: reveal() isn't seller-restricted, so
+      // try submitting it right now from this same (buyer) wallet using any
+      // evidence cached in this browser -- no waiting on the seller side.
+      const evidence = getStoredEvidenceFor(i);
+      if (evidence) {
+        log('agentLog', `#${i}: verifying disclosure on-chain now...`, 'info');
+        const result = await trySendReveal(i, evidence);
+        if (result.sent && result.verified) {
+          log('agentLog', `#${i}: verified on-chain -- disclosure unlocked.`, 'success');
+        } else if (result.sent && result.failed) {
+          log('agentLog', `#${i}: evidence didn't check out (status: ${STATUS_NAMES[result.status]}) -- refunded plus slashed stake.`, 'error');
+        }
+      }
     } catch (e) {
       log('agentLog', `#${i}: purchase failed -- ${e.shortMessage || e.message}`, 'error');
     }

@@ -135,6 +135,61 @@ describe("BlackBoxBazaar", function () {
     expect(repBps).to.equal(10000n);
   });
 
+  it("lets anyone (not just the seller) submit a valid reveal, and it still pays the seller correctly", async function () {
+    // reveal() is deliberately NOT restricted to the seller -- the ecrecover
+    // math is what proves the evidence is genuine, not who happens to submit
+    // it. This is what lets the frontend auto-submit the reveal immediately
+    // after a purchase confirms, from whichever wallet is already connected,
+    // instead of requiring the seller's own wallet specifically to be the one
+    // that sends it.
+    const bazaar = await deploy();
+    const findingText = "Nonce reuse confirmed between tx A and tx B.";
+    const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes(findingText));
+    await createListing(bazaar, commitmentHash);
+    await bazaar.connect(targetSigner).purchase(0, { value: PRICE });
+
+    const h1 = ethers.keccak256(ethers.toUtf8Bytes("message one"));
+    const h2 = ethers.keccak256(ethers.toUtf8Bytes("message two"));
+    const k = ethers.hexlify(ethers.randomBytes(32));
+    const sig1 = rawSign(targetPriv, h1, k);
+    const sig2 = rawSign(targetPriv, h2, k);
+
+    const sellerBalanceBefore = await ethers.provider.getBalance(seller.address);
+    // Submitted by `other` -- neither the seller nor the buyer/target.
+    await bazaar.connect(other).reveal(0, findingText, h1, sig1.v, sig1.r, sig1.s, h2, sig2.v, sig2.s);
+    const sellerBalanceAfter = await ethers.provider.getBalance(seller.address);
+
+    // Seller still gets paid in full -- `other` submitted it, but the seller
+    // is still who the contract pays, since payout is keyed to l.seller.
+    expect(sellerBalanceAfter).to.equal(sellerBalanceBefore + PRICE + STAKE);
+
+    const listing = await bazaar.getListing(0);
+    expect(listing.status).to.equal(2); // Verified
+    expect(listing.finding).to.equal(findingText);
+  });
+
+  it("still slashes the seller's stake on bad evidence even when a third party submits it", async function () {
+    // The flip side of the above: letting anyone submit doesn't mean anyone
+    // can force a false positive. Bad evidence fails exactly the same way
+    // regardless of who sends the transaction.
+    const bazaar = await deploy();
+    const findingText = "Fake finding.";
+    const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes(findingText));
+    await createListing(bazaar, commitmentHash);
+    await bazaar.connect(targetSigner).purchase(0, { value: PRICE });
+
+    const impostorPriv = '0x' + BigInt(ethers.hexlify(ethers.randomBytes(32))).toString(16).padStart(64, '0');
+    const h1 = ethers.keccak256(ethers.toUtf8Bytes("message one"));
+    const h2 = ethers.keccak256(ethers.toUtf8Bytes("message two"));
+    const k = ethers.hexlify(ethers.randomBytes(32));
+    const sig1 = rawSign(impostorPriv, h1, k);
+    const sig2 = rawSign(impostorPriv, h2, k);
+
+    await bazaar.connect(other).reveal(0, findingText, h1, sig1.v, sig1.r, sig1.s, h2, sig2.v, sig2.s);
+    const listing = await bazaar.getListing(0);
+    expect(listing.status).to.equal(3); // Failed
+  });
+
   it("refunds the buyer and slashes the stake when signatures don't recover to the target", async function () {
     const bazaar = await deploy();
     const findingText = "Fake finding.";
