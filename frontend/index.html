@@ -187,6 +187,9 @@
     max-height: 220px;
     overflow-y: auto;
   }
+  .derive-key-btn { align-self: flex-start; }
+  .derive-key-result:not(:empty) { margin-top: 0.4rem; }
+  .derive-key-result .finding-box { font-size: 0.76rem; white-space: pre-wrap; }
   .lock-note {
     background: rgba(139,145,163,0.06);
     border: 1px solid var(--border);
@@ -708,6 +711,7 @@ function initContract() {
     if (contract) { try { contract.removeAllListeners(); } catch (e) {} }
     contract = new ethers.Contract(addr, window.BLACKBOX_ABI, signer);
     setupActivityFeed(contract);
+    rearmPendingSellerReveals();
   } catch (e) {
     console.error(e);
   }
@@ -935,7 +939,9 @@ function renderCard({ id, l, rep, isOwner, isBuyer, eligible }) {
     <div class="row"><span>Seller</span><span class="mono">${l.seller.slice(0,8)}...${l.seller.slice(-4)} (${repPct}%)</span></div>
     <div class="row"><span>Price</span><span>${priceEth} ETH</span></div>
     ${disclosed
-      ? `<div class="finding-box">${escapeHtml(l.finding)}</div>`
+      ? `<div class="finding-box">${escapeHtml(l.finding)}</div>
+         <button class="small derive-key-btn" data-id="${id}" data-target="${l.targetAccount}">🔑 Derive private key from this disclosure</button>
+         <div class="derive-key-result" id="derive-result-${id}"></div>`
       : `<div class="finding-box">🔒 locked until purchase + verified reveal</div>`}
     ${actionHtml}
   </div>`;
@@ -987,6 +993,49 @@ function attachCardHandlers() {
         await loadListings();
       } catch (e) {
         toast('cancelListing failed: ' + (e.shortMessage || e.message || e), 'error');
+      }
+    }));
+  });
+  document.querySelectorAll('.derive-key-btn').forEach(btn => {
+    btn.addEventListener('click', withLoading(btn, 'Decoding on-chain evidence...', async () => {
+      const id = btn.dataset.id;
+      const target = btn.dataset.target;
+      const resultBox = document.getElementById(`derive-result-${id}`);
+      resultBox.innerHTML = '';
+      try {
+        // Pull the ACTUAL on-chain transaction that revealed this listing --
+        // not anything typed into this page -- and decode its real
+        // calldata. This is what makes the derived key trustworthy: it's
+        // reading the same bytes Etherscan would show you.
+        const events = await contract.queryFilter(contract.filters.Verified(id), 0, 'latest');
+        if (!events.length) {
+          resultBox.innerHTML = `<div class="lock-note">Could not find the reveal transaction on-chain (RPC may limit lookback range). Try a fresh page load, or check this listing's history directly on Etherscan.</div>`;
+          return;
+        }
+        const tx = await provider.getTransaction(events[events.length - 1].transactionHash);
+        const decoded = contract.interface.decodeFunctionData('reveal', tx.data);
+        const [, , msgHash1, , r, s1, msgHash2, , s2] = decoded;
+
+        const result = ToySigner.recoverPrivateKeyFromNonceReuse(msgHash1, s1, msgHash2, s2, r, target);
+        if (!result) {
+          resultBox.innerHTML = `<div class="lock-note">Recovery math did not converge on these values -- the signatures may not be a genuine shared-nonce pair.</div>`;
+          return;
+        }
+        resultBox.innerHTML = `
+          <div class="finding-box" style="border-color:${result.matchesTarget ? 'var(--accent2)' : 'var(--danger)'};">
+${result.matchesTarget ? '✅ Recovered key derives the exact target address -- this disclosure is real, exploit-grade evidence.' : '⚠️ Recovered a candidate key, but it does not derive the target address -- treat with suspicion.'}
+
+Recovered private key: ${result.privateKey}
+Derived address:       ${result.address}
+Target account:        ${target}
+
+This was computed live in your browser from the actual reveal() transaction's
+calldata on Sepolia, using k = (h1-h2)(s1-s2)^-1 mod n, d = (s1*k-h1)*r^-1 mod n --
+the same formula a real attacker would use against real nonce reuse. Synthetic
+demo key only; see README Safety note.
+          </div>`;
+      } catch (e) {
+        resultBox.innerHTML = `<div class="lock-note">Derivation failed: ${escapeHtml(e.shortMessage || e.message || String(e))}</div>`;
       }
     }));
   });
@@ -1052,7 +1101,24 @@ document.getElementById('revealBtn').addEventListener('click', withLoading(
 // Holds evidence for listings this agent created, keyed by listing id, so it
 // can auto-reveal the instant a purchase comes in -- no human ever types
 // reveal-form fields for an agent-created listing.
+//
+// Also persisted to localStorage, keyed by contract address, so the
+// listener survives a page refresh or the tab being closed and reopened --
+// otherwise the in-memory listener (and the evidence needed to reveal at
+// all, since it's never sent on-chain before reveal) is lost the moment the
+// page reloads, leaving a purchased listing stuck in Escrowed forever.
 const sellerAgentEvidence = {};
+function evidenceStorageKey(contractAddr) { return `bbb_seller_evidence_${contractAddr.toLowerCase()}`; }
+function saveEvidenceToStorage() {
+  const addr = addrInput.value.trim();
+  if (!addr) return;
+  try { localStorage.setItem(evidenceStorageKey(addr), JSON.stringify(sellerAgentEvidence)); } catch (e) {}
+}
+function loadEvidenceFromStorage() {
+  const addr = addrInput.value.trim();
+  if (!addr) return {};
+  try { return JSON.parse(localStorage.getItem(evidenceStorageKey(addr)) || '{}'); } catch (e) { return {}; }
+}
 
 document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
   document.getElementById('sellerAgentBtn'), 'Working...', async () => {
@@ -1089,7 +1155,11 @@ document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
       const stake = price * 1000n / 10000n;
 
       const findingText = `Target ${addr}'s signer reused an ECDSA nonce across two messages.\n` +
-        `Message 1: "${msg1}"\nMessage 2: "${msg2}"\nShared r: ${sig1.r}\n` +
+        `Message 1: "${msg1}"\nMessage 2: "${msg2}"\n\n` +
+        `Full signature evidence (sufficient to independently recover the private key --\n` +
+        `see "Derive private key from this disclosure" below, or run the same math yourself):\n` +
+        `msgHash1: ${h1}\nv1: ${sig1.v}\nr (shared): ${sig1.r}\ns1: ${sig1.s}\n` +
+        `msgHash2: ${h2}\nv2: ${sig2.v}\ns2: ${sig2.s}\n\n` +
         `Auto-discovered and listed by the Seller Agent -- synthetic demo data only.`;
       const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes(findingText));
       const title = `Auto-discovered nonce reuse (agent run, target ${short(addr)})`;
@@ -1111,6 +1181,7 @@ document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
       log('sellerAgentLog', `[${i+1}/${n}] to let a Buyer Agent purchase this listing, import that key into a demo wallet, fund it with testnet ETH, and connect as that account.`);
 
       sellerAgentEvidence[id.toString()] = { findingText, h1, v1: sig1.v, r: sig1.r, s1: sig1.s, h2, v2: sig2.v, s2: sig2.s };
+      saveEvidenceToStorage();
       armAutoReveal(id);
     } catch (e) {
       log('sellerAgentLog', `[${i+1}/${n}] failed -- ${e.shortMessage || e.message || e}`);
@@ -1134,11 +1205,43 @@ function armAutoReveal(id) {
       await tx.wait();
       log('sellerAgentLog', `Listing #${key} auto-reveal submitted. Check Marketplace for Verified status.`);
       delete sellerAgentEvidence[key];
+      saveEvidenceToStorage();
       loadListings();
     } catch (e) {
       log('sellerAgentLog', `Listing #${key} auto-reveal failed -- ${e.shortMessage || e.message || e}`);
     }
   });
+}
+
+// Re-arm auto-reveal listeners for any agent-created listings that are still
+// waiting on a purchase or a reveal, using evidence saved to localStorage --
+// this is what makes the Seller Agent's promise ("no human step") survive a
+// page refresh, a closed tab, or switching MetaMask accounts and back.
+async function rearmPendingSellerReveals() {
+  if (!contract) return;
+  const stored = loadEvidenceFromStorage();
+  const ids = Object.keys(stored);
+  if (!ids.length) return;
+  let rearmed = 0;
+  for (const key of ids) {
+    try {
+      const l = await contract.getListing(key);
+      if (Number(l.status) === 1) { // Escrowed -- still waiting on reveal
+        sellerAgentEvidence[key] = stored[key];
+        armAutoReveal(BigInt(key));
+        rearmed++;
+      } else if (Number(l.status) === 0) { // Listed -- still waiting on purchase
+        sellerAgentEvidence[key] = stored[key];
+        armAutoReveal(BigInt(key));
+        rearmed++;
+      } else {
+        // Verified/Failed/Cancelled -- nothing left to do, stop tracking it.
+        delete stored[key];
+      }
+    } catch (e) { /* listing may not exist on this contract; drop it */ delete stored[key]; }
+  }
+  localStorage.setItem(evidenceStorageKey(addrInput.value.trim()), JSON.stringify(stored));
+  if (rearmed) log('sellerAgentLog', `Restored ${rearmed} pending auto-reveal listener(s) from a previous session.`);
 }
 
 // ---------- autonomous buyer agent ----------
@@ -1201,8 +1304,12 @@ document.getElementById('genTargetBtn').addEventListener('click', () => {
   const sig2 = ToySigner.toySign(priv, h2, reusedK);
 
   const findingText = `Target ${addr}'s signer reused an ECDSA nonce across two approvals.\n` +
-    `Message 1: "${msg1}"\nMessage 2: "${msg2}"\n` +
-    `Shared r: ${sig1.r}\nRecommended remediation: switch to RFC6979 deterministic nonces / a vetted signing library.`;
+    `Message 1: "${msg1}"\nMessage 2: "${msg2}"\n\n` +
+    `Full signature evidence (sufficient to independently recover the private key --\n` +
+    `see "Derive private key from this disclosure" below, or run the same math yourself):\n` +
+    `msgHash1: ${h1}\nv1: ${sig1.v}\nr (shared): ${sig1.r}\ns1: ${sig1.s}\n` +
+    `msgHash2: ${h2}\nv2: ${sig2.v}\ns2: ${sig2.s}\n\n` +
+    `Recommended remediation: switch to RFC6979 deterministic nonces / a vetted signing library.`;
 
   document.getElementById('vulnOutput').innerHTML = `
     <div class="finding-box">

@@ -117,4 +117,49 @@ function randomPrivKey() {
   return hex;
 }
 
-window.ToySigner = { toySign, toyPrivToAddress, randomPrivKey, N };
+/**
+ * THE ACTUAL PAYOFF OF A NONCE-REUSE DISCLOSURE.
+ *
+ * Given two signatures (r, s1) over msgHash1 and (r, s2) over msgHash2 that
+ * share one `r` -- exactly what `reveal()` requires and what the contract's
+ * `ecrecover` check proves came from the target's key -- this recovers the
+ * target's private key directly:
+ *   s = k^-1 (h + r*d) mod n   for both signatures, same k
+ *   => k = (h1 - h2) * (s1 - s2)^-1 mod n
+ *   => d = (s1*k - h1) * r^-1 mod n
+ * This is the real formula an attacker (or, here, the affected party
+ * verifying their own disclosure) uses -- not a demonstration stand-in.
+ *
+ * Ethereum signatures are canonicalized to "low-s" (s <= n/2, flipping v if
+ * needed). Two signatures produced from the same nonce can each have been
+ * independently flipped during signing, which changes which sign convention
+ * their stored `s` is in -- so there are exactly two possibilities for how
+ * s1 and s2 relate, and this tries both, keeping whichever candidate key
+ * actually derives the expected target address.
+ */
+function recoverPrivateKeyFromNonceReuse(h1Hex, s1Hex, h2Hex, s2Hex, rHex, expectedAddress) {
+  const H1 = BigInt(h1Hex), S1 = BigInt(s1Hex), H2 = BigInt(h2Hex), S2 = BigInt(s2Hex), R = BigInt(rHex);
+  const candidates = [];
+  for (const denom of [mod(S1 - S2, N), mod(S1 + S2, N)]) {
+    if (denom === 0n) continue;
+    try {
+      const k = mod((H1 - H2) * invMod(denom, N), N);
+      const d = mod((S1 * k - H1) * invMod(R, N), N);
+      if (d !== 0n) candidates.push(d);
+    } catch (e) { /* non-invertible, skip */ }
+  }
+  for (const d of candidates) {
+    const hex = '0x' + d.toString(16).padStart(64, '0');
+    const addr = toyPrivToAddress(hex);
+    if (!expectedAddress || addr.toLowerCase() === expectedAddress.toLowerCase()) {
+      return { privateKey: hex, address: addr, matchesTarget: true };
+    }
+  }
+  if (candidates.length) {
+    const hex = '0x' + candidates[0].toString(16).padStart(64, '0');
+    return { privateKey: hex, address: toyPrivToAddress(hex), matchesTarget: false };
+  }
+  return null;
+}
+
+window.ToySigner = { toySign, toyPrivToAddress, randomPrivKey, recoverPrivateKeyFromNonceReuse, N };
