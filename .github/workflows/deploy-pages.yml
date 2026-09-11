@@ -29,6 +29,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true # auto-creates the Pages "site" on the repo if it
+                            # doesn't exist yet -- without this, the very first
+                            # run 404s looking for a site that was never
+                            # actually created, even with Source set to
+                            # "GitHub Actions" in the Settings UI.
       - uses: actions/upload-pages-artifact@v3
         with:
           path: frontend
