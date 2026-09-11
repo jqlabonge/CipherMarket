@@ -2,10 +2,11 @@
   "name": "black-box-bazaar-hardhat",
   "version": "1.0.0",
   "private": true,
-  "description": "Hardhat project for BlackBoxBazaar: real Solidity test suite + Base Sepolia deploy script. Run on a machine with normal network access (the sandbox this was built in blocks the npm registry).",
+  "description": "Hardhat project for BlackBoxBazaar: real Solidity test suite + Ethereum Sepolia deploy script (Base Sepolia kept as an extra option). Run on a machine with normal network access (the sandbox this was built in blocks the npm registry).",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
     "deploy:baseSepolia": "hardhat run scripts/deploy.js --network baseSepolia"
   },
   "devDependencies": {

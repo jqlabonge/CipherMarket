@@ -1,4 +1,5 @@
-const { ethers } = require("hardhat");
+const hre = require("hardhat");
+const { ethers } = hre;
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -15,7 +16,7 @@ async function main() {
   console.log("Chain ID:", net.chainId.toString());
   console.log("Paste this address into the frontend's 'Deployed BlackBoxBazaar address' field.");
   console.log("Verify with:");
-  console.log(`  npx hardhat verify --network baseSepolia ${address}`);
+  console.log(`  npx hardhat verify --network ${hre.network.name} ${address}`);
 }
 
 main().catch((error) => {

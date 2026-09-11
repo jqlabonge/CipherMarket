@@ -1,7 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
-const { BASE_SEPOLIA_RPC_URL, PRIVATE_KEY, BASESCAN_API_KEY } = process.env;
+const { SEPOLIA_RPC_URL, BASE_SEPOLIA_RPC_URL, PRIVATE_KEY, ETHERSCAN_API_KEY, BASESCAN_API_KEY } = process.env;
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -14,6 +14,13 @@ module.exports = {
   },
   networks: {
     hardhat: {},
+    // Primary deploy target: Ethereum Sepolia.
+    sepolia: {
+      url: SEPOLIA_RPC_URL || "",
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      chainId: 11155111,
+    },
+    // Kept as an additional option -- not required for the current deploy.
     baseSepolia: {
       url: BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
@@ -22,6 +29,7 @@ module.exports = {
   },
   etherscan: {
     apiKey: {
+      sepolia: ETHERSCAN_API_KEY || "",
       baseSepolia: BASESCAN_API_KEY || "",
     },
     customChains: [

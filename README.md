@@ -131,7 +131,7 @@ classes that would quietly need a human judgment call in disguise.
 contracts/BlackBoxBazaar.sol   The marketplace contract (single source of truth)
 build/                         Compiled ABI + bytecode (solc --via-ir, verified to compile clean)
 test/                          Offline, dependency-free Python test harness (see below)
-hardhat/                       Hardhat project: real Solidity test suite + Base Sepolia deploy script
+hardhat/                       Hardhat project: real Solidity test suite + Ethereum Sepolia deploy script
 frontend/                      Zero-npm-dependency static web app (ethers.js via CDN)
 agents/                        (buyer agent is built into frontend/index.html's "Autonomous Agents" tab)
 ```
@@ -196,13 +196,13 @@ address (see below), connect MetaMask, and:
   reveal without touching any real key. One click sends the generated evidence
   straight into the Sell/Reveal forms.
 
-## 9. Deploying to Base Sepolia
+## 9. Deploying to Ethereum Sepolia
 
 ```bash
 cd hardhat
 npm install
-cp .env.example .env        # fill in PRIVATE_KEY (testnet funds only!)
-npx hardhat run scripts/deploy.js --network baseSepolia
+cp .env.example .env        # fill in SEPOLIA_RPC_URL and PRIVATE_KEY (testnet funds only!)
+npx hardhat run scripts/deploy.js --network sepolia
 ```
 
 Then paste the printed contract address into the frontend's "Deployed
@@ -211,8 +211,16 @@ BlackBoxBazaar address" field.
 - **Deployed application URL:** _fill in after hosting `frontend/` (e.g. GitHub
   Pages, Vercel, or any static host)_
 - **Testnet contract address:** _fill in after running the deploy script_
-- **Chain:** Base Sepolia (chain ID `84532`)
-- **Block explorer:** `https://sepolia.basescan.org/address/<contract address>`
+- **Chain:** Ethereum Sepolia (chain ID `11155111`)
+- **Block explorer:** `https://sepolia.etherscan.io/address/<contract address>`
+
+### Alternative: Base Sepolia
+
+Base Sepolia support is kept in `hardhat.config.js` as an additional option
+(not required for the current deploy target). To use it instead, fill in
+`BASE_SEPOLIA_RPC_URL`/`PRIVATE_KEY` in `.env` and run
+`npx hardhat run scripts/deploy.js --network baseSepolia` -- chain ID `84532`,
+explorer `https://sepolia.basescan.org`.
 
 ## 10. Safety note
 
