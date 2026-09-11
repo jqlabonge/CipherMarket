@@ -1168,6 +1168,14 @@ document.querySelectorAll('.tabs button').forEach(btn => {
 // ---------- contract address persistence ----------
 const addrInput = document.getElementById('contractAddr');
 const DEFAULT_CONTRACT_ADDRESS = '0x83231B074245eBfCe03A2E804A35a621DBB9FAD8'; // Sepolia, verified
+
+// Default demo target for "Simulate Vulnerable Target" / the Seller Agent's fixed
+// target key, so every visitor's first run targets the same wallet instead of a
+// fresh random one. This is a throwaway testnet-only key with no real funds -- it
+// exists purely so nonce-reuse demos are reproducible across runs/browsers.
+// Overridden the instant a user pastes/saves their own key into "Fixed target
+// private key", or clicks "Use a different demo wallet".
+const DEFAULT_TARGET_PRIVATE_KEY = '0xeabb9fdbe2913d38ccaecc1608e963519c6f4c23cc92b898f4be36f745ae9bc8';
 addrInput.value = localStorage.getItem('bbb_contract_address') || DEFAULT_CONTRACT_ADDRESS;
 updateContractPill();
 document.getElementById('saveAddrBtn').addEventListener('click', () => {
@@ -2340,7 +2348,7 @@ function loadEvidenceFromStorage() {
 
 // ---------- fixed target private key (optional, for repeat demos) ----------
 const fixedKeyInput = document.getElementById('seller-agent-fixed-key');
-fixedKeyInput.value = localStorage.getItem('bbb_fixed_target_key') || '';
+fixedKeyInput.value = localStorage.getItem('bbb_fixed_target_key') || DEFAULT_TARGET_PRIVATE_KEY;
 function updateFixedKeyPreview() {
   const preview = document.getElementById('fixed-key-preview');
   const v = ToySigner.normalizePrivKey(fixedKeyInput.value);
@@ -2648,15 +2656,19 @@ document.getElementById('agentScanBtn').addEventListener('click', withLoading(
 // wallet" is the explicit opt-out when you actually want a new one.
 function runVulnSimulation(forceNew) {
   let priv = null;
+  let usedDefault = false;
+  let isNew = false;
   if (!forceNew) {
     const saved = localStorage.getItem('bbb_fixed_target_key') || '';
     try {
       const d = saved ? BigInt(saved) : 0n;
       if (saved && d !== 0n && d < ToySigner.N) priv = saved;
-    } catch (e) { /* invalid saved value, fall through to generating one */ }
+    } catch (e) { /* invalid saved value, fall through below */ }
+    if (!priv) { priv = DEFAULT_TARGET_PRIVATE_KEY; usedDefault = true; }
+  } else {
+    priv = ToySigner.randomPrivKey();
+    isNew = true;
   }
-  const isNew = !priv;
-  if (!priv) priv = ToySigner.randomPrivKey();
 
   // Persist it -- this is what makes it "the" demo wallet from now on,
   // reused by this button AND pre-filled into the Seller Agent's fixed
@@ -2688,8 +2700,10 @@ function runVulnSimulation(forceNew) {
   document.getElementById('vulnOutput').innerHTML = `
     <div class="panel" style="margin-top:0; padding:1rem 1.1rem;">
       <p class="hint" style="margin-top:0;">${isNew
-        ? 'Generated a new persistent demo wallet -- saved in your browser and reused automatically next time (also now set as the Seller Agent\'s fixed target key). Import it into a demo MetaMask account once and you\'re done.'
-        : 'Reusing your saved demo wallet, so there\'s nothing new to import.'}</p>
+        ? 'Generated a new persistent demo wallet, saved in your browser and reused automatically next time (also now set as the Seller Agent\'s fixed target key). Import it into a demo MetaMask account once and you\'re done.'
+        : usedDefault
+          ? 'Targeting CipherMarket\'s default demo wallet (also now set as the Seller Agent\'s fixed target key). Click "Use a different demo wallet" if you want a fresh random one instead.'
+          : 'Reusing your saved demo wallet, so there\'s nothing new to import.'}</p>
       <div class="flex" style="justify-content:space-between; gap:0.5rem; font-size:0.85rem; color:var(--muted); flex-wrap:wrap;"><span>Target address</span><span class="mono hex-highlight">${addr}</span></div>
       <div class="flex" style="justify-content:space-between; gap:0.5rem; font-size:0.85rem; color:var(--muted); align-items:center; flex-wrap:wrap; margin-top:0.3rem;">
         <span>Private key</span>
