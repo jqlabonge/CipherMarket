@@ -27,20 +27,13 @@ module.exports = {
       chainId: 84532,
     },
   },
+  // Etherscan API V2: a single key works across every chain Etherscan
+  // supports (Sepolia included), selected by chain ID -- no more
+  // per-network apiKey object.
   etherscan: {
-    apiKey: {
-      sepolia: ETHERSCAN_API_KEY || "",
-      baseSepolia: BASESCAN_API_KEY || "",
-    },
-    customChains: [
-      {
-        network: "baseSepolia",
-        chainId: 84532,
-        urls: {
-          apiURL: "https://api-sepolia.basescan.org/api",
-          browserURL: "https://sepolia.basescan.org",
-        },
-      },
-    ],
+    apiKey: ETHERSCAN_API_KEY || "",
+  },
+  sourcify: {
+    enabled: false,
   },
 };
