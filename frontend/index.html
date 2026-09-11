@@ -97,6 +97,14 @@
   .net-dot.online { background: var(--success); box-shadow: 0 0 0 3px var(--success-dim); animation: pulse 1.6s ease-in-out infinite; }
   #netPill { cursor: default; transition: border-color 0.15s ease, background 0.15s ease; }
   #netPill.online:hover { border-color: var(--muted2); }
+  #strikesPill {
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    margin: 0;
+  }
+  #strikesPill:hover { border-color: var(--muted2); background: var(--panel3, #eee); }
+  #strikesPill.bad { border-color: rgba(240,56,75,0.35); background: var(--danger-dim); color: #b21e2d; }
+  #strikesPill.warn { border-color: rgba(240,56,75,0.25); background: rgba(240,56,75,0.06); color: #b21e2d; }
   .pill-copy-btn {
     all: unset; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     width: 16px; height: 16px; border-radius: 4px; color: var(--muted2); flex: none;
@@ -542,6 +550,9 @@
     <span class="brand-text"><span class="accent">Cipher</span>Market</span>
   </h1>
   <div class="flex header-actions">
+    <button class="pill" id="strikesPill" type="button" title="Strike system -- click for details">
+      <span id="strikesPillText">strikes: --</span>
+    </button>
     <span class="pill" id="netPill">
       <span class="net-dot" id="netPillDot"></span>
       <span id="netPillText">not connected</span>
@@ -1020,6 +1031,29 @@ function toast(msg, type = 'info', ms = 4800) {
     setTimeout(() => el.remove(), 260);
   }, ms);
 }
+function infoDialog(title, body) {
+  return new Promise((resolve) => {
+    const host = document.getElementById('modalHost');
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').textContent = body;
+    host.hidden = false;
+    const cancelBtn = document.getElementById('modalCancelBtn');
+    const okBtn = document.getElementById('modalConfirmBtn');
+    const prevCancelDisplay = cancelBtn.style.display;
+    const prevOkLabel = okBtn.textContent;
+    cancelBtn.style.display = 'none';
+    okBtn.textContent = 'Got it';
+    function cleanup() {
+      host.hidden = true;
+      cancelBtn.style.display = prevCancelDisplay;
+      okBtn.textContent = prevOkLabel;
+      okBtn.removeEventListener('click', onOk);
+      resolve();
+    }
+    function onOk() { cleanup(); }
+    okBtn.addEventListener('click', onOk);
+  });
+}
 function confirmDialog(title, body) {
   return new Promise((resolve) => {
     const host = document.getElementById('modalHost');
@@ -1152,6 +1186,7 @@ async function refreshWalletState() {
     document.getElementById('connectBtn').textContent = 'Connect Wallet';
     document.getElementById('banNotice').style.display = 'none';
     document.getElementById('createListingBtn').disabled = false;
+    lastStrikeCount = null; lastStrikeBanned = null; updateStrikesPill();
     updateDebugStatus();
     return;
   }
@@ -1278,18 +1313,56 @@ function initContract() {
 }
 
 // ---------- strike system: 2 failed reveals bans an address from listing ----------
+let lastStrikeCount = null;
+let lastStrikeBanned = null;
+function updateStrikesPill() {
+  const pill = document.getElementById('strikesPill');
+  const text = document.getElementById('strikesPillText');
+  pill.classList.remove('bad', 'warn');
+  if (!contract || !currentAddress || lastStrikeCount === null) {
+    text.textContent = 'strikes: --';
+    return;
+  }
+  text.textContent = `strikes: ${lastStrikeCount}/2`;
+  if (lastStrikeBanned) pill.classList.add('bad');
+  else if (lastStrikeCount === 1) pill.classList.add('warn');
+}
 async function refreshBanStatus() {
   const notice = document.getElementById('banNotice');
   const btn = document.getElementById('createListingBtn');
-  if (!contract || !currentAddress) { notice.style.display = 'none'; btn.disabled = false; return; }
+  if (!contract || !currentAddress) {
+    notice.style.display = 'none'; btn.disabled = false;
+    lastStrikeCount = null; lastStrikeBanned = null;
+    updateStrikesPill();
+    return;
+  }
   try {
-    const banned = await contract.isBanned(currentAddress);
+    const [banned, rep] = await Promise.all([
+      contract.isBanned(currentAddress),
+      contract.reputationOf(currentAddress),
+    ]);
     notice.style.display = banned ? 'block' : 'none';
     btn.disabled = banned;
+    lastStrikeCount = Math.min(Number(rep.failed), 2);
+    lastStrikeBanned = banned;
+    updateStrikesPill();
   } catch (e) {
-    console.error('isBanned check failed', e);
+    console.error('isBanned/reputationOf check failed', e);
   }
 }
+document.getElementById('strikesPill').addEventListener('click', () => {
+  const detail = (currentAddress && lastStrikeCount !== null)
+    ? ` Your connected wallet (${currentAddress.slice(0,6)}...${currentAddress.slice(-4)}) has used ${lastStrikeCount}/2 strikes${lastStrikeBanned ? ' and is BANNED from creating new listings.' : '.'}`
+    : ' Connect a wallet to see your own strike count.';
+  infoDialog(
+    'Strike system',
+    'Every seller gets 2 free strikes. A strike is a failed reveal: bad math, a finding ' +
+    'that doesn\'t match its own commitment, or letting the reveal window expire without ' +
+    'revealing at all. On the 3rd strike, that address is permanently banned from creating ' +
+    'new listings on CipherMarket -- enforced on-chain in createListing() itself, not just ' +
+    'this UI, and there is no admin override.' + detail
+  );
+});
 
 // ---------- live activity feed ----------
 const EVENT_META = {
