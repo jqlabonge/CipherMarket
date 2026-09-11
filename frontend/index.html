@@ -362,7 +362,7 @@ async function refreshWalletState() {
   currentAddress = await signer.getAddress();
   const net = await provider.getNetwork();
   document.getElementById('netPill').textContent = `${currentAddress.slice(0,6)}...${currentAddress.slice(-4)} · chain ${net.chainId}`;
-  document.getElementById('connectBtn').textContent = 'Connected';
+  document.getElementById('connectBtn').textContent = `Connected (${accounts.length} acct${accounts.length > 1 ? 's' : ''}) -- click to manage`;
   initContract();
   loadListings();
 }
@@ -373,7 +373,17 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
     return;
   }
   if (!provider) provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send('eth_requestAccounts', []); // prompts MetaMask, lets you pick/add accounts to connect
+  try {
+    // Forces MetaMask's account-picker dialog open every time, even if
+    // already connected -- this is what actually lets you add a second
+    // account to the site. Plain eth_requestAccounts often just silently
+    // returns the existing approval instead of reopening the picker.
+    await provider.send('wallet_requestPermissions', [{ eth_accounts: {} }]);
+  } catch (e) {
+    // Some wallets (or MetaMask versions) don't support wallet_requestPermissions --
+    // fall back to the plain request, which at least connects on first use.
+    await provider.send('eth_requestAccounts', []);
+  }
   await refreshWalletState();
 });
 
