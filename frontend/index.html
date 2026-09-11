@@ -495,6 +495,16 @@
         <div class="grow"><label>to</label><input id="seller-agent-pricemax" value="0.03" /></div>
         <div class="grow"><label>Findings to generate</label><input id="seller-agent-count" value="1" /></div>
       </div>
+      <label>Fixed target private key <span class="muted" style="font-weight:400;">(optional -- for repeat demos)</span></label>
+      <input id="seller-agent-fixed-key" placeholder="0x... leave blank to generate a fresh synthetic target each run" />
+      <p class="hint">
+        By default the agent generates a brand-new synthetic target every run, which is why you kept
+        having to import a new MetaMask account. Paste a private key here once -- ideally the one for
+        an account you've already imported and funded -- and every listing this agent creates will
+        target <i>that same address</i> instead, so you only need one demo account for as many runs
+        as you like. Saved in your browser only. Still synthetic/demo-only; never paste a real key here.
+      </p>
+      <div id="fixed-key-preview" class="hint mono" style="margin-top:0.3rem;"></div>
       <div class="flex" style="margin-top:0.75rem;">
         <button class="primary" id="sellerAgentBtn">Discover &amp; Auto-List Finding(s)</button>
       </div>
@@ -1120,20 +1130,52 @@ function loadEvidenceFromStorage() {
   try { return JSON.parse(localStorage.getItem(evidenceStorageKey(addr)) || '{}'); } catch (e) { return {}; }
 }
 
+// ---------- fixed target private key (optional, for repeat demos) ----------
+const fixedKeyInput = document.getElementById('seller-agent-fixed-key');
+fixedKeyInput.value = localStorage.getItem('bbb_fixed_target_key') || '';
+function updateFixedKeyPreview() {
+  const preview = document.getElementById('fixed-key-preview');
+  const v = fixedKeyInput.value.trim();
+  if (!v) { preview.textContent = ''; return; }
+  try {
+    const d = BigInt(v);
+    if (d === 0n || d >= ToySigner.N) throw new Error('out of range');
+    const addr = ToySigner.toyPrivToAddress(v);
+    preview.innerHTML = `Target address: <b>${addr}</b> -- make sure this matches the account you've imported into MetaMask.`;
+    localStorage.setItem('bbb_fixed_target_key', v);
+  } catch (e) {
+    preview.textContent = 'Not a valid private key (expected 0x + 64 hex characters).';
+  }
+}
+fixedKeyInput.addEventListener('input', updateFixedKeyPreview);
+updateFixedKeyPreview();
+
 document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
   document.getElementById('sellerAgentBtn'), 'Working...', async () => {
   if (!contract) return toast('Connect wallet + set contract address first.', 'error');
   const priceMin = parseFloat(document.getElementById('seller-agent-pricemin').value.trim() || '0.005');
   const priceMax = parseFloat(document.getElementById('seller-agent-pricemax').value.trim() || '0.03');
   const n = Math.max(1, Math.min(5, parseInt(document.getElementById('seller-agent-count').value.trim() || '1', 10)));
+  const fixedKeyRaw = fixedKeyInput.value.trim();
+  let fixedKeyValid = false;
+  if (fixedKeyRaw) {
+    try {
+      const d = BigInt(fixedKeyRaw);
+      fixedKeyValid = d !== 0n && d < ToySigner.N;
+    } catch (e) { fixedKeyValid = false; }
+    if (!fixedKeyValid) {
+      toast('The fixed target private key is not valid -- expected 0x + 64 hex characters. Falling back to a fresh random target.', 'error');
+    }
+  }
 
-  log('sellerAgentLog', `Starting discovery run: generating ${n} synthetic nonce-reuse finding(s), price range ${priceMin}-${priceMax} ETH.`);
+  log('sellerAgentLog', `Starting discovery run: generating ${n} nonce-reuse finding(s), price range ${priceMin}-${priceMax} ETH` +
+    (fixedKeyValid ? `, reusing your fixed target account.` : `, each against a fresh synthetic target.`));
 
   for (let i = 0; i < n; i++) {
     try {
-      const priv = ToySigner.randomPrivKey();
+      const priv = fixedKeyValid ? fixedKeyRaw : ToySigner.randomPrivKey();
       const addr = ToySigner.toyPrivToAddress(priv);
-      log('sellerAgentLog', `[${i+1}/${n}] scanned synthetic target ${short(addr)} -- reused nonce detected across two demo signatures.`);
+      log('sellerAgentLog', `[${i+1}/${n}] ${fixedKeyValid ? 'using fixed' : 'scanned synthetic'} target ${short(addr)} -- reused nonce detected across two demo signatures.`);
 
       const msg1 = `transfer ${(i+1)} ETH -- session ${Date.now()}-${i}-a`;
       const msg2 = `approve spender -- session ${Date.now()}-${i}-b`;
@@ -1177,8 +1219,12 @@ document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
       }
       if (id === null) { log('sellerAgentLog', `[${i+1}/${n}] listed, but could not determine listing id from receipt -- auto-reveal won't be armed for it.`); continue; }
 
-      log('sellerAgentLog', `[${i+1}/${n}] listing #${id} live. Target private key (demo-only, never real): ${priv}`);
-      log('sellerAgentLog', `[${i+1}/${n}] to let a Buyer Agent purchase this listing, import that key into a demo wallet, fund it with testnet ETH, and connect as that account.`);
+      if (fixedKeyValid) {
+        log('sellerAgentLog', `[${i+1}/${n}] listing #${id} live, targeting your fixed demo account (${short(addr)}) -- switch to it in MetaMask and buy whenever you're ready.`);
+      } else {
+        log('sellerAgentLog', `[${i+1}/${n}] listing #${id} live. Target private key (demo-only, never real): ${priv}`);
+        log('sellerAgentLog', `[${i+1}/${n}] to purchase this listing, import that key into a demo wallet, fund it with testnet ETH, and connect as that account -- or paste it into "Fixed target private key" above so future runs reuse it.`);
+      }
 
       sellerAgentEvidence[id.toString()] = { findingText, h1, v1: sig1.v, r: sig1.r, s1: sig1.s, h2, v2: sig2.v, s2: sig2.s };
       saveEvidenceToStorage();
@@ -1291,7 +1337,16 @@ document.getElementById('agentScanBtn').addEventListener('click', withLoading(
 
 // ---------- vulnerable target simulator ----------
 document.getElementById('genTargetBtn').addEventListener('click', () => {
-  const priv = ToySigner.randomPrivKey();
+  // Reuses the same fixed target key as the Seller Agent, if one is set
+  // (see the Autonomous Agents tab) -- so you don't have to re-import a
+  // fresh MetaMask account for every demo pass.
+  const savedFixedKey = localStorage.getItem('bbb_fixed_target_key') || '';
+  let priv;
+  try {
+    const d = savedFixedKey ? BigInt(savedFixedKey) : 0n;
+    priv = (savedFixedKey && d !== 0n && d < ToySigner.N) ? savedFixedKey : ToySigner.randomPrivKey();
+  } catch (e) { priv = ToySigner.randomPrivKey(); }
+  const usingFixed = priv === savedFixedKey;
   const addr = ToySigner.toyPrivToAddress(priv);
 
   const msg1 = 'transfer 10 ETH to 0xBuyer... nonce=7';
@@ -1312,6 +1367,7 @@ document.getElementById('genTargetBtn').addEventListener('click', () => {
     `Recommended remediation: switch to RFC6979 deterministic nonces / a vetted signing library.`;
 
   document.getElementById('vulnOutput').innerHTML = `
+    ${usingFixed ? '<p class="hint">Reusing your saved fixed target key from the Seller Agent tab.</p>' : ''}
     <div class="finding-box">
 Synthetic target private key (demo only, never use for anything real):
 ${priv}
