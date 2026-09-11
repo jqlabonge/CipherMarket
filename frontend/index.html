@@ -347,13 +347,17 @@ document.getElementById('saveAddrBtn').addEventListener('click', () => {
 });
 
 // ---------- wallet connect ----------
-document.getElementById('connectBtn').addEventListener('click', async () => {
-  if (!window.ethereum) {
-    alert('No injected wallet found. Install MetaMask (or another EVM wallet) to interact with a real testnet deployment.');
+async function refreshWalletState() {
+  if (!provider) return;
+  const accounts = await provider.send('eth_accounts', []); // does not prompt
+  if (!accounts.length) {
+    currentAddress = null;
+    signer = null;
+    contract = null;
+    document.getElementById('netPill').textContent = 'not connected';
+    document.getElementById('connectBtn').textContent = 'Connect Wallet';
     return;
   }
-  provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send('eth_requestAccounts', []);
   signer = await provider.getSigner();
   currentAddress = await signer.getAddress();
   const net = await provider.getNetwork();
@@ -361,7 +365,28 @@ document.getElementById('connectBtn').addEventListener('click', async () => {
   document.getElementById('connectBtn').textContent = 'Connected';
   initContract();
   loadListings();
+}
+
+document.getElementById('connectBtn').addEventListener('click', async () => {
+  if (!window.ethereum) {
+    alert('No injected wallet found. Install MetaMask (or another EVM wallet) to interact with a real testnet deployment.');
+    return;
+  }
+  if (!provider) provider = new ethers.BrowserProvider(window.ethereum);
+  await provider.send('eth_requestAccounts', []); // prompts MetaMask, lets you pick/add accounts to connect
+  await refreshWalletState();
 });
+
+// Re-sync automatically when you switch accounts or networks in MetaMask --
+// no need to click "Connect Wallet" again each time. This is what lets you
+// flip between a seller account and a buyer account on the same page.
+if (window.ethereum) {
+  provider = new ethers.BrowserProvider(window.ethereum);
+  window.ethereum.on('accountsChanged', () => refreshWalletState());
+  window.ethereum.on('chainChanged', () => window.location.reload());
+  // Pick up an already-connected account on page load without prompting.
+  refreshWalletState();
+}
 
 function initContract() {
   const addr = addrInput.value.trim();
