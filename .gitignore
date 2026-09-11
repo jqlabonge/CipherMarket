@@ -5,3 +5,7 @@ hardhat/artifacts/
 hardhat/typechain-types/
 __pycache__/
 *.pyc
+
+# macOS
+.DS_Store
+**/.DS_Store

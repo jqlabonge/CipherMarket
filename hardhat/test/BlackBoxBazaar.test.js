@@ -278,4 +278,59 @@ describe("BlackBoxBazaar", function () {
       bazaar.connect(buyer).purchase(0, { value: PRICE })
     ).to.be.revertedWith("only the target account or its authorized delegate may purchase");
   });
+
+  // --- Regression tests for the "not eligible / execution reverted" bug ---
+  // The actual root cause of that bug was never the Solidity logic (it was
+  // always the simple `who == target || authorizedBuyer[...]` check below)
+  // -- it was the frontend being pointed at a STALE deployment that didn't
+  // have isEligibleBuyer() in its bytecode at all, so every call reverted
+  // with no data and looked exactly like a logic failure. These tests exist
+  // to pin down the exact behavior that must hold on any real deployment,
+  // so a future stale-address mixup surfaces immediately as a mismatch
+  // against these expectations instead of a confusing on-chain revert.
+  it("isEligibleBuyer never reverts, even for a listing id that doesn't exist yet", async function () {
+    const bazaar = await deploy();
+    // This is exactly the call the deploy script's self-check makes, and
+    // exactly the call the frontend makes on every card render. It must
+    // return false, not revert -- a revert here is the fingerprint of
+    // pointing at a deployment that's missing this function entirely.
+    // NOTE: we deliberately do NOT check isEligibleBuyer(0, ethers.ZeroAddress)
+    // here. A nonexistent listing's `target` defaults to address(0), so asking
+    // "is the zero address eligible" trivially returns true (zero == zero) --
+    // that's not a real bypass (no one can ever transact as address(0)), it's
+    // just a degenerate case of checking with the same sentinel value the
+    // struct defaults to. Using a real, unrelated address is the actual test.
+    await expect(bazaar.isEligibleBuyer(0, buyer.address)).to.not.be.reverted;
+    expect(await bazaar.isEligibleBuyer(0, buyer.address)).to.equal(false);
+    expect(await bazaar.isEligibleBuyer(999, buyer.address)).to.equal(false);
+  });
+
+  it("isEligibleBuyer is true for the exact target address the instant a listing is created -- no purchase needed", async function () {
+    const bazaar = await deploy();
+    const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes("finding"));
+    await createListing(bazaar, commitmentHash);
+    // This is the exact scenario that looked broken: connect as the wallet
+    // that IS the listing's target and check eligibility with nothing else
+    // having happened yet. Must be true immediately, straight off `who ==
+    // target`, with no authorization step and no prior purchase required.
+    expect(await bazaar.isEligibleBuyer(0, targetAddr)).to.equal(true);
+    // A different, unrelated address must still be false.
+    expect(await bazaar.isEligibleBuyer(0, buyer.address)).to.equal(false);
+  });
+
+  it("exposes the full expected public interface (guards against a partial/mismatched deployment)", async function () {
+    const bazaar = await deploy();
+    // Sanity-checks that every function the frontend depends on is actually
+    // present and callable on a fresh deployment of the CURRENT contract
+    // source -- if someone edits the contract and forgets to update the
+    // frontend/deploy script accordingly, this is the test that should
+    // catch the mismatch, not a confused user clicking "Buy".
+    expect(typeof bazaar.isEligibleBuyer).to.equal("function");
+    expect(typeof bazaar.authorizeBuyer).to.equal("function");
+    expect(typeof bazaar.revokeBuyer).to.equal("function");
+    expect(typeof bazaar.purchase).to.equal("function");
+    expect(typeof bazaar.reveal).to.equal("function");
+    expect(typeof bazaar.getListing).to.equal("function");
+    expect(await bazaar.listingCount()).to.equal(0n);
+  });
 });

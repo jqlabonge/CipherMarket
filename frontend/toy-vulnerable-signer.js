@@ -74,10 +74,25 @@ function pointMul(k, pt) {
   return result;
 }
 
+/**
+ * Normalizes a pasted private key so it doesn't matter whether the source
+ * (MetaMask's "Show private key" export, in particular) included the "0x"
+ * prefix or not -- MetaMask shows the raw 64 hex characters with no prefix,
+ * which is *correct*, but every hex-parsing function here (and BigInt())
+ * requires "0x" to treat it as hex instead of misreading/rejecting it as a
+ * decimal number. This just adds the prefix back if it's missing, after
+ * trimming whitespace. Doesn't validate length/range -- callers still do that.
+ */
+function normalizePrivKey(raw) {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) return trimmed;
+  return /^0x/i.test(trimmed) ? trimmed : '0x' + trimmed;
+}
+
 /** Deliberately accepts an explicit nonce `k` -- the whole point of this
  * file. Real signers never let you do this. */
 function toySign(privKeyHex, msgHashHex, kHex) {
-  const d = BigInt(privKeyHex);
+  const d = BigInt(normalizePrivKey(privKeyHex));
   const h = BigInt(msgHashHex);
   const k = BigInt(kHex);
   const R = pointMul(k, G);
@@ -98,7 +113,7 @@ function toySign(privKeyHex, msgHashHex, kHex) {
 }
 
 function toyPrivToAddress(privKeyHex) {
-  const d = BigInt(privKeyHex);
+  const d = BigInt(normalizePrivKey(privKeyHex));
   const pub = pointMul(d, G);
   const xHex = pub[0].toString(16).padStart(64, '0');
   const yHex = pub[1].toString(16).padStart(64, '0');
@@ -162,4 +177,4 @@ function recoverPrivateKeyFromNonceReuse(h1Hex, s1Hex, h2Hex, s2Hex, rHex, expec
   return null;
 }
 
-window.ToySigner = { toySign, toyPrivToAddress, randomPrivKey, recoverPrivateKeyFromNonceReuse, N };
+window.ToySigner = { toySign, toyPrivToAddress, randomPrivKey, recoverPrivateKeyFromNonceReuse, normalizePrivKey, N };

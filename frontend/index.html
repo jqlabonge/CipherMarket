@@ -63,7 +63,7 @@
     gap: 0.75rem;
   }
   header h1 { font-size: 1.15rem; margin: 0; letter-spacing: -0.01em; display:flex; align-items:center; gap:0.5rem; font-weight: 800; }
-  header h1 span { color: var(--accent); }
+  header h1 .brand-text .accent { color: var(--accent); }
   .logo-dot { width:9px; height:9px; border-radius:50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-dim); display:inline-block; }
   .brand-mark {
     display: inline-flex; align-items: center; justify-content: center;
@@ -82,11 +82,27 @@
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    box-shadow: 0 1px 2px rgba(20,20,30,0.03);
   }
   .pill.role-seller { border-color: rgba(76,111,255,0.35); background: var(--accent2-dim); color: #33499e; }
   .pill.role-buyer { border-color: rgba(18,183,106,0.3); background: var(--success-dim); color: #0d7f4a; }
   .pill.ok { border-color: rgba(18,183,106,0.35); background: var(--success-dim); color: #0d7f4a; }
   .pill.bad { border-color: rgba(240,56,75,0.3); background: var(--danger-dim); color: #b21e2d; }
+
+  /* header polish: connection status dot, copy-address affordance, and a
+     live stats snapshot pill so the market's health is visible at a glance
+     without scrolling down to the stats strip. */
+  .header-actions { align-items: center; }
+  .net-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted2); flex: none; transition: background 0.15s ease; }
+  .net-dot.online { background: var(--success); box-shadow: 0 0 0 3px var(--success-dim); animation: pulse 1.6s ease-in-out infinite; }
+  #netPill { cursor: default; transition: border-color 0.15s ease, background 0.15s ease; }
+  #netPill.online:hover { border-color: var(--muted2); }
+  .pill-copy-btn {
+    all: unset; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 4px; color: var(--muted2); flex: none;
+  }
+  .pill-copy-btn:hover { color: var(--accent2); background: rgba(76,111,255,0.12); }
+  .pill-copy-btn svg { width: 11px; height: 11px; }
   button {
     font: inherit;
     font-weight: 600;
@@ -164,6 +180,43 @@
   .hero strong { font-size: 2.4rem; line-height: 1.1; letter-spacing: -0.02em; font-weight: 800; display: block; max-width: 20ch; margin: 0 auto; }
   .hero p { color: var(--muted); margin: 1rem auto 0; line-height: 1.6; font-size: 1rem; max-width: 62ch; }
   .hero .hero-badges { display:flex; gap:0.5rem; flex-wrap:wrap; margin-top: 1.4rem; justify-content: center; }
+  .verifier-callout {
+    position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 0.55rem;
+    flex-wrap: wrap; justify-content: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 1.05rem;
+    background: white; border: 1px solid var(--border2); box-shadow: var(--shadow-sm);
+    border-radius: 999px; padding: 0.6rem 1.2rem; margin: 1.1rem auto 0; color: var(--text);
+  }
+  .verifier-callout .dot { color: var(--muted2); font-weight: 400; }
+  .verifier-callout .accent2 { color: var(--accent2); }
+  .hero-note { position: relative; z-index: 1; font-size: 0.82rem; color: var(--muted); max-width: 52ch; margin: 0.9rem auto 0; line-height: 1.5; }
+  .chain-graphic { position: relative; z-index: 1; display: block; width: 200px; height: auto; margin: 0 auto 1.4rem; }
+
+  /* chain-graphic animation -- the dashed connector flows continuously; the
+     red block starts out the same size as its neighbors (blends in, looks
+     like just another account), then after ~1s grows into its larger size
+     and the warning icon fades in once it's done growing -- reads as "this
+     one turns out to be the compromised one." See the HTML comment above
+     the svg for how to revert this back to the plain static version. */
+  .chain-line { animation: chainFlow 1.4s linear infinite; }
+  @keyframes chainFlow { to { stroke-dashoffset: -18; } }
+  .risk-block rect {
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scale(0.6667); /* 32/48 -- matches the other boxes' size exactly */
+    animation: riskGrow 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1s forwards;
+  }
+  .risk-block path {
+    opacity: 0;
+    animation: riskIconIn 0.35s ease-out 1.35s forwards;
+  }
+  @keyframes riskGrow { to { transform: scale(1); } }
+  @keyframes riskIconIn { to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .chain-line { animation: none; }
+    .risk-block rect { animation: none; transform: scale(1); }
+    .risk-block path { animation: none; opacity: 1; }
+  }
   .chip {
     font-size: 0.76rem; padding: 0.35rem 0.8rem; border-radius: 999px;
     border: 1px solid var(--border2); color: var(--text); background: rgba(255,255,255,0.75);
@@ -173,6 +226,18 @@
   .tabs button { background: transparent; border-color: transparent; color: var(--muted); }
   .tabs button:hover:not(:disabled) { background: var(--panel2); color: var(--text); }
   .tabs button.active { background: var(--text); border-color: var(--text); color: white; }
+  .demo-tag {
+    display: inline-block; margin-left: 0.35rem; font-size: 0.6rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.05em; padding: 0.1rem 0.4rem;
+    border-radius: 999px; background: var(--warn-dim); color: #a86500; vertical-align: 1px;
+  }
+  .tabs button.active .demo-tag { background: rgba(255,255,255,0.22); color: white; }
+  .demo-banner {
+    display: flex; gap: 0.6rem; align-items: flex-start; background: var(--warn-dim);
+    border: 1px solid rgba(245,166,35,0.35); border-radius: 14px; padding: 0.8rem 1rem;
+    font-size: 0.82rem; color: #7a5000; line-height: 1.5; margin-bottom: 1rem;
+  }
+  .demo-banner b { color: #7a5000; }
   .section-head { display:flex; align-items:baseline; justify-content:space-between; gap:0.75rem; margin: 1.4rem 0 0.6rem; flex-wrap: wrap; }
   .section-head:first-child { margin-top: 0; }
   .section-head h3 { margin:0; font-size: 0.95rem; display:flex; align-items:center; gap:0.5rem; font-weight: 700; }
@@ -231,6 +296,13 @@
   .derive-key-btn { align-self: flex-start; }
   .derive-key-result:not(:empty) { margin-top: 0.4rem; }
   .derive-key-result .finding-box { font-size: 0.76rem; white-space: pre-wrap; }
+  .compromised-box {
+    background: var(--danger-dim); border: 1px solid rgba(240,56,75,0.25);
+    border-radius: 14px; padding: 0.75rem 0.9rem;
+  }
+  .compromised-box .k { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--danger); margin-bottom: 0.35rem; }
+  .compromised-box ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.25rem; }
+  .compromised-box li { font-size: 0.8rem; color: var(--text); line-height: 1.4; }
   .lock-note {
     background: var(--panel2);
     border: 1px solid var(--border2);
@@ -254,16 +326,27 @@
   .muted { color: var(--muted); }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
   .status-log {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.78rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 0.15rem;
+  }
+  .status-log .log-entry {
+    font-size: 0.82rem;
+    line-height: 1.4;
     background: var(--bg2);
     border: 1px solid var(--border2);
-    border-radius: 12px;
-    padding: 0.75rem;
-    max-height: 240px;
-    overflow-y: auto;
-    white-space: pre-wrap;
+    border-left: 3px solid var(--muted2);
+    border-radius: 10px;
+    padding: 0.55rem 0.75rem;
+    color: var(--text);
   }
+  .status-log .log-entry.info { border-left-color: var(--accent2); }
+  .status-log .log-entry.success { border-left-color: var(--success); background: rgba(18,183,106,0.07); }
+  .status-log .log-entry.error { border-left-color: var(--danger); background: rgba(240,56,75,0.07); }
+  .status-log .log-entry.skip { border-left-color: var(--muted2); color: var(--muted); }
   a { color: var(--accent-ink); font-weight: 600; }
   .flex { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
   .grow { flex: 1; min-width: 160px; }
@@ -301,11 +384,26 @@
 
   /* status widget */
   .status-widget { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; }
-  .status-widget .status-item { padding: 0.9rem 1rem; border-radius: 16px; background: var(--bg2); border: 1px solid var(--border2); }
+  .status-widget .status-item {
+    padding: 0.9rem 1rem; border-radius: 16px;
+    background: linear-gradient(160deg, #FDFDFF 0%, var(--bg2) 100%);
+    border: 1px solid var(--border2);
+    box-shadow: 0 1px 2px rgba(20,20,30,0.03);
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: default;
+  }
   .status-widget .status-item .k { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; margin-bottom: 0.3rem; }
   .status-widget .status-item .v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; word-break: break-all; }
+  .status-widget .status-item:hover {
+    background: linear-gradient(160deg, #EDEDF6 0%, #E3E3ED 100%);
+    border-color: var(--muted2);
+    transform: scale(1.035);
+    box-shadow: 0 6px 16px rgba(20,20,30,0.09);
+  }
   .status-widget .status-item.match { border-color: rgba(18,183,106,0.35); background: var(--success-dim); }
+  .status-widget .status-item.match:hover { background: #D3F2E2; border-color: rgba(18,183,106,0.55); }
   .status-widget .status-item.mismatch { border-color: rgba(240,56,75,0.3); background: var(--danger-dim); }
+  .status-widget .status-item.mismatch:hover { background: #FBD8DC; border-color: rgba(240,56,75,0.5); }
 
   /* promo-style panels (Connection status / How it works) -- compact by
      default, everything past the headline lives behind a click. */
@@ -353,7 +451,12 @@
   .promo-panel#debugStatusPanel.match > summary { background: linear-gradient(135deg, #EAFBF2 0%, #F1FAF6 55%, #F7FDF9 100%); }
   .promo-panel#debugStatusPanel.mismatch > summary { background: linear-gradient(135deg, #FDEFF0 0%, #FEF3F0 55%, #FEF8F5 100%); }
 
-  .step { border: 1px solid var(--border); border-radius: 14px; background: var(--bg2); overflow: hidden; }
+  .step {
+    border: 1px solid var(--border); border-radius: 14px;
+    background: linear-gradient(160deg, #FDFDFF 0%, var(--bg2) 100%);
+    overflow: hidden;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
   .step + .step { margin-top: 0.55rem; }
   .step summary {
     list-style: none; cursor: pointer; padding: 0.75rem 0.9rem;
@@ -364,6 +467,15 @@
   .step[open] summary::after { content: "\2212"; }
   .step p { margin: 0; padding: 0 0.9rem 0.85rem; font-size: 0.84rem; color: var(--muted); line-height: 1.55; }
   .step p code { color: var(--accent-ink); background: var(--accent-dim); padding: 0.05rem 0.35rem; border-radius: 5px; font-size: 0.82em; }
+
+  /* Protocol flow / New here: plain click-to-open (native <details> behavior),
+     just a slight color darken on hover so it's clear the box is interactive --
+     no auto-open-on-hover, that caused more problems than it solved. */
+  #walkthroughPanel .step:hover,
+  #tutorialPanel .step:hover {
+    background: linear-gradient(160deg, #EDEDF6 0%, #E3E3ED 100%);
+    border-color: var(--muted2);
+  }
 
   /* toasts */
   #toastHost { position: fixed; right: 1.1rem; bottom: 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 200; max-width: 340px; }
@@ -386,6 +498,18 @@
   .modal-box p { margin: 0 0 1.2rem; font-size: 0.88rem; color: var(--muted); line-height: 1.55; }
   .modal-actions { display:flex; gap:0.6rem; justify-content:flex-end; }
 
+  /* addresses/keys/hashes inside disclosed proof text -- made to stand out */
+  .hex-highlight { color: var(--accent2); font-weight: 700; }
+
+  /* fullscreen disclosure viewer */
+  #fullscreenHost { position: fixed; inset: 0; background: rgba(15,15,25,0.55); backdrop-filter: blur(4px); display:flex; align-items:flex-start; justify-content:center; z-index: 400; padding: 2.5rem 1rem; overflow-y: auto; }
+  #fullscreenHost[hidden] { display: none; }
+  .fullscreen-box { background: white; border: 1px solid var(--border); border-radius: 24px; padding: 2rem; max-width: 760px; width: 100%; box-shadow: var(--shadow-lg); animation: modalIn 0.18s ease; }
+  .fullscreen-box .fs-close { float: right; }
+  .fullscreen-box .compromised-box { font-size: 0.95rem; }
+  .fullscreen-box .compromised-box li { font-size: 0.92rem; }
+  .fullscreen-box pre.fs-finding { white-space: pre-wrap; word-break: break-word; font-size: 0.86rem; line-height: 1.6; background: var(--bg-alt, #f7f7fb); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-top: 0.5rem; }
+
   @media (max-width: 640px) {
     .hero strong { font-size: 1.7rem; }
     .hero { padding: 2.2rem 1.2rem 1.8rem; }
@@ -400,33 +524,59 @@
   <h1>
     <span class="brand-mark" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
-        <circle cx="12" cy="12" r="7.5" stroke="white" stroke-width="1.6"/>
-        <circle cx="12" cy="12" r="2.3" fill="white"/>
-        <g stroke="white" stroke-width="1.6" stroke-linecap="round">
-          <line x1="12" y1="2.3" x2="12" y2="4.3"/>
-          <line x1="12" y1="19.7" x2="12" y2="21.7"/>
-          <line x1="2.3" y1="12" x2="4.3" y2="12"/>
-          <line x1="19.7" y1="12" x2="21.7" y2="12"/>
-        </g>
+        <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" fill="white"/>
+        <path d="M8 10.5V7.5a4 4 0 1 1 8 0v3" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <circle cx="12" cy="14.6" r="1.5" fill="#4C6FFF"/>
       </svg>
     </span>
-    <span>Cipher</span>Market
+    <span class="brand-text"><span class="accent">Cipher</span>Market</span>
   </h1>
-  <div class="flex">
-    <span class="pill" id="netPill">not connected</span>
+  <div class="flex header-actions">
+    <span class="pill" id="netPill">
+      <span class="net-dot" id="netPillDot"></span>
+      <span id="netPillText">not connected</span>
+      <button class="pill-copy-btn" id="netPillCopyBtn" type="button" title="Copy address" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </span>
     <button class="primary" id="connectBtn">Connect Wallet</button>
   </div>
 </header>
 
 <main>
   <section class="hero">
+    <!-- Animated: the dashed line flows continuously (implies chain activity),
+         and the red "risk" block pops in ~1s after load instead of always
+         being there -- meant to read as "the vulnerability shows up on the
+         chain." To revert to the static version, just delete the .chain-line
+         and .risk-block classes below (and the matching @keyframes / rules
+         in <style>, search "chain-graphic animation"), which puts every
+         shape back to always-visible with no animation. -->
+    <svg class="chain-graphic" viewBox="0 0 264 60" aria-hidden="true">
+      <line class="chain-line" x1="40" y1="30" x2="224" y2="30" stroke="rgba(20,20,30,0.4)" stroke-width="3.5" stroke-dasharray="3 6" stroke-linecap="round"/>
+      <rect x="8" y="14" width="32" height="32" rx="9" fill="var(--accent2)"/>
+      <rect x="76" y="14" width="32" height="32" rx="9" fill="var(--accent)"/>
+      <g class="risk-block">
+        <rect x="140" y="6" width="48" height="48" rx="12" fill="var(--danger)"/>
+        <path d="M160 14 L172 28 L164 28 L176 46" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <rect x="224" y="14" width="32" height="32" rx="9" fill="var(--success)"/>
+    </svg>
     <strong>An on-chain marketplace for cryptographic vulnerability disclosure.</strong>
     <p>
       Flagship vertical: <b>ECDSA nonce reuse</b>. A seller claims a target account's
       signer reused a nonce across two signatures. The full finding stays hidden until a buyer
       pays into escrow -- payment only releases if the contract's own <code>ecrecover</code>-based
       check confirms both signatures really do recover to the target account over two different
-      messages. No oracle, no human judge: the math is the verifier.
+      messages.
+    </p>
+    <p class="verifier-callout">
+      <span>No oracle</span><span class="dot">&middot;</span><span>No human judge</span><span class="dot">&middot;</span><span class="accent2">The math is the verifier</span>
+    </p>
+    <p class="hero-note">
+      A listing alone is just a claim. Buying is what triggers the seller's reveal and the
+      contract's own on-chain check -- that's the only thing that actually confirms a
+      vulnerability is real, instead of someone on the internet saying your wallet is compromised.
     </p>
     <div class="hero-badges">
       <span class="chip">commit-then-reveal</span>
@@ -466,6 +616,25 @@
     </div>
   </details>
 
+  <!-- ARCHIVED, not deleted: "Buy directly with a private key" panel, hidden 2026-09-11 per
+       request. Fully functional -- its JS handlers below are untouched -- just remove the
+       `hidden` attribute on this div (and restore the tutorial's step 3 wording, currently
+       pointing at the connect-as-target-account flow instead) to bring it back. -->
+  <div class="panel" id="quickBuyPanel" style="margin-top:1rem;" hidden>
+    <h2>Buy directly with a private key <span class="muted" style="font-weight:400;font-size:0.8rem;">-- skips MetaMask account switching entirely</span></h2>
+    <p class="hint">
+      Paste the private key for the account a listing targets. This signs the purchase transaction
+      with that key right here in your browser and sends it through your connected wallet's network
+      connection -- MetaMask's active account never has to change. The account still needs Sepolia
+      ETH to pay the price. Demo convenience only: never paste a key protecting real funds.
+    </p>
+    <div class="flex" style="margin-top:0.6rem;">
+      <div class="grow"><label>Target private key</label><input id="quickbuy-key" placeholder="0x..." /></div>
+      <div style="align-self:flex-end;"><button class="primary" id="quickbuy-scan">Find listings I can buy</button></div>
+    </div>
+    <div id="quickbuy-results" style="margin-top:0.9rem;"></div>
+  </div>
+
   <details class="panel promo-panel alt" id="walkthroughPanel">
     <summary>
       <div class="promo-eyebrow">Protocol flow</div>
@@ -493,11 +662,12 @@
         </li>
         <li>
           <details class="step">
-            <summary><b>3. Reveal</b> <span class="muted">-- math decides, not a referee</span></summary>
-            <p>Seller submits the full finding plus two ECDSA signatures sharing one
-              <code>r</code>. The contract runs <code>ecrecover</code> on both. Match &rarr;
-              escrow (price + stake) pays the seller and the finding is disclosed on-chain.
-              Mismatch &rarr; buyer is refunded in full and receives the seller's slashed stake.</p>
+            <summary><b>3. Reveal</b> <span class="muted">-- automatic, math decides, not a referee</span></summary>
+            <p>The moment a purchase lands, the seller's browser automatically submits the full
+              finding plus two ECDSA signatures sharing one <code>r</code> -- no manual step, no
+              judgment call. The contract runs <code>ecrecover</code> on both. Match &rarr; escrow
+              (price + stake) pays the seller and the finding is disclosed on-chain. Mismatch
+              &rarr; buyer is refunded in full and receives the seller's slashed stake.</p>
           </details>
         </li>
         <li>
@@ -511,31 +681,59 @@
     </div>
   </details>
 
-  <details class="panel collapsible" id="contractPanel">
-    <summary class="flex" style="justify-content:space-between;">
-      <span style="font-weight:600;font-size:0.9rem;">Contract connection</span>
-      <span class="pill" id="contractStatusPill">not set</span>
+  <details class="panel promo-panel" id="tutorialPanel">
+    <summary>
+      <div class="promo-eyebrow">New here?</div>
+      <div class="promo-headline">Run a full demo in four steps</div>
+      <p class="promo-sub">Generate a demo vulnerability, list it, buy it, and watch the proof get revealed -- start to finish, no real bug required.</p>
+      <span class="promo-toggle">Show me <span class="chev">&rarr;</span></span>
     </summary>
-    <div class="flex" style="margin-top:0.9rem;">
-      <div class="grow">
-        <label for="contractAddr">Deployed BlackBoxBazaar address</label>
-        <input id="contractAddr" placeholder="0x... (paste after deployment)" />
-      </div>
-      <div style="align-self:flex-end;">
-        <button id="saveAddrBtn">Save</button>
-      </div>
+    <div class="promo-body">
+      <ol class="walkthrough" style="list-style:none; padding-left:0;">
+        <li>
+          <details class="step">
+            <summary><b>1. Generate a demo vulnerability</b> <span class="muted">-- Simulate Vulnerable Target tab</span></summary>
+            <p>Open <b>Simulate Vulnerable Target</b> (marked Demo) and click "Generate synthetic
+              vulnerable target." It creates a fresh keypair with a real, intentionally-reproduced
+              nonce-reuse bug, standing in for a cryptographic finding you don't have on hand yet.
+              Fund that address with a little Sepolia ETH if you plan to buy as it later.</p>
+          </details>
+        </li>
+        <li>
+          <details class="step">
+            <summary><b>2. List it</b> <span class="muted">-- Sell a Finding tab, or the Seller Agent</span></summary>
+            <p>Either fill out <b>Sell a Finding</b> yourself with the generated target address and
+              evidence, or skip straight to <b>Autonomous Agents</b> (marked Demo) and let the
+              Seller Agent generate and list a finding for you in one click -- paste a fixed target
+              key there first if you want repeat runs to reuse the same demo account.</p>
+          </details>
+        </li>
+        <li>
+          <details class="step">
+            <summary><b>3. Buy it</b> <span class="muted">-- as the target account</span></summary>
+            <p>Only the target account (or its delegate) can buy. Switch MetaMask to that account
+              (import the target's private key into it if it's a demo-generated one) and connect --
+              the "Buy for ... ETH" button then appears right on that listing's card.</p>
+          </details>
+        </li>
+        <li>
+          <details class="step">
+            <summary><b>4. See the proof</b> <span class="muted">-- reveal and verify</span></summary>
+            <p>If you used the Seller Agent, it auto-reveals once purchased. Listing manually? Use
+              the <b>Reveal</b> tab as the seller. Either way, the listing card then shows what's
+              compromised plus a "Deep dive into the proof" you can expand to see the raw
+              signatures and derive the private key yourself.</p>
+          </details>
+        </li>
+      </ol>
     </div>
-    <p class="hint">
-      Not deployed yet? See <a href="../README.md">README</a> for the Ethereum Sepolia deploy steps.
-      This field is saved in your browser only.
-    </p>
   </details>
 
   <nav class="tabs">
     <button data-tab="market" class="active">Marketplace</button>
     <button data-tab="sell">Sell a Finding</button>
-    <button data-tab="agents">Autonomous Agents</button>
-    <button data-tab="vulnerable">Simulate Vulnerable Target</button>
+    <button data-tab="agents">Autonomous Agents <span class="demo-tag">Demo</span></button>
+    <button data-tab="vulnerable">Simulate Vulnerable Target <span class="demo-tag">Demo</span></button>
   </nav>
 
   <section id="tab-market">
@@ -582,6 +780,14 @@
       <button id="refreshBtn" class="small">↻ Refresh</button>
     </div>
     <div id="listingsRoot"><div class="empty-state">Connect a wallet and set a contract address to load listings.</div></div>
+
+    <section id="pastTransactionsSection" hidden style="margin-top:2rem;">
+      <div class="section-head">
+        <h3>Past transactions</h3>
+      </div>
+      <p class="section-desc">Verified listings move here automatically 15 minutes after they settle, to keep the sections above focused on what's still active.</p>
+      <div id="pastTransactionsRoot"></div>
+    </section>
   </section>
 
   <section id="tab-sell" hidden>
@@ -652,6 +858,12 @@
   </section>
 
   <section id="tab-agents" hidden>
+    <div class="demo-banner">
+      <b>Demo only.</b> These agents generate synthetic vulnerable targets and trade against
+      them automatically, so the full list &rarr; buy &rarr; reveal cycle can run end to end
+      without a real disclosed cryptographic vulnerability on hand. They never touch real
+      funds or a real finding.
+    </div>
     <div class="panel">
       <h2>Seller Agent <span class="muted" style="font-weight:400;font-size:0.8rem;">(autonomous)</span></h2>
       <p class="hint">A deterministic finding-discovery-and-listing agent: it generates a synthetic
@@ -678,7 +890,7 @@
       <div class="flex" style="margin-top:0.75rem;">
         <button class="primary" id="sellerAgentBtn">Discover &amp; Auto-List Finding(s)</button>
       </div>
-      <div class="status-log" id="sellerAgentLog" style="margin-top:0.75rem;">idle.</div>
+      <div class="status-log" id="sellerAgentLog" style="margin-top:0.75rem;" hidden></div>
     </div>
 
     <div class="panel" style="margin-top:1rem;">
@@ -696,11 +908,16 @@
       <div class="flex" style="margin-top:0.75rem;">
         <button class="primary" id="agentScanBtn">Scan &amp; Auto-Purchase Matching Listings</button>
       </div>
-      <div class="status-log" id="agentLog" style="margin-top:0.75rem;">idle.</div>
+      <div class="status-log" id="agentLog" style="margin-top:0.75rem;" hidden></div>
     </div>
   </section>
 
   <section id="tab-vulnerable" hidden>
+    <div class="demo-banner">
+      <b>Demo only.</b> This generates a synthetic keypair with a real, intentionally-reproduced
+      nonce-reuse bug so there's something genuine to list and prove, standing in for an actual
+      disclosed vulnerability. Nothing here is a real finding or touches real funds.
+    </div>
     <div class="panel">
       <h2>Simulate a vulnerable target <span class="muted" style="font-weight:400;font-size:0.8rem;">(demo data only)</span></h2>
       <p class="hint">
@@ -711,10 +928,33 @@
         browser, using <code>toy-vulnerable-signer.js</code> (no real key, no real funds, never
         sent anywhere). This is exactly the bug class the marketplace exists to disclose.
       </p>
-      <button class="primary" id="genTargetBtn" style="margin-top:1.1rem;">Generate synthetic vulnerable target</button>
+      <div class="flex" style="margin-top:1.1rem;">
+        <button class="primary" id="genTargetBtn">Generate synthetic vulnerable target</button>
+        <button class="small" id="genTargetNewBtn" title="Discard the saved demo wallet and generate a different one">Use a different demo wallet</button>
+      </div>
       <div id="vulnOutput" style="margin-top:0.9rem;"></div>
     </div>
   </section>
+
+  <details class="panel collapsible" id="contractPanel" style="margin-top:1.5rem; max-width:420px; font-size:0.82rem;">
+    <summary class="flex" style="justify-content:space-between;">
+      <span style="font-weight:600;font-size:0.82rem;">Contract connection</span>
+      <span class="pill" id="contractStatusPill" style="font-size:0.72rem;">not set</span>
+    </summary>
+    <div class="flex" style="margin-top:0.7rem;">
+      <div class="grow">
+        <label for="contractAddr" style="font-size:0.76rem;">Deployed BlackBoxBazaar address</label>
+        <input id="contractAddr" placeholder="0x... (paste after deployment)" style="font-size:0.8rem;" />
+      </div>
+      <div style="align-self:flex-end;">
+        <button id="saveAddrBtn" class="small">Save</button>
+      </div>
+    </div>
+    <p class="hint" style="font-size:0.72rem;">
+      Not deployed yet? See <a href="../README.md">README</a> for the Ethereum Sepolia deploy steps.
+      This field is saved in your browser only.
+    </p>
+  </details>
 
   <div class="footer-note">
     Testnet demo only. No real vulnerabilities, real private keys, or operational exploit
@@ -723,6 +963,12 @@
 </main>
 
 <div id="toastHost"></div>
+<div id="fullscreenHost" hidden>
+  <div class="fullscreen-box">
+    <button class="small fs-close" id="fullscreenCloseBtn">Close &times;</button>
+    <div id="fullscreenContent"></div>
+  </div>
+</div>
 <div id="modalHost" hidden>
   <div class="modal-box">
     <h3 id="modalTitle"></h3>
@@ -788,10 +1034,38 @@ function withLoading(btn, labelWhileLoading, fn) {
   };
 }
 
-function log(elId, msg) {
+// type is one of 'info' (default), 'success', 'error', 'skip' -- picks the
+// entry's color/accent instead of a terminal-style timestamped text dump.
+function log(elId, msg, type = 'info') {
   const el = document.getElementById(elId);
-  const line = `[${new Date().toLocaleTimeString()}] ${msg}\n`;
-  el.textContent = (el.textContent === 'idle.' ? '' : el.textContent) + line;
+  el.hidden = false;
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.textContent = msg;
+  el.appendChild(entry);
+  el.scrollTop = el.scrollHeight;
+}
+
+// Same as log(), but for a message that has a private key embedded in it --
+// masks the key behind a "Show" toggle instead of printing it in plaintext
+// into the log. Used by the Seller Agent when it generates a fresh
+// synthetic target key you need in order to import/fund that demo account.
+function logWithKey(elId, prefix, key, type = 'success') {
+  const el = document.getElementById(elId);
+  el.hidden = false;
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  const masked = '•'.repeat(Math.max(12, key.length - 2));
+  entry.innerHTML = `${escapeHtml(prefix)} <span class="mono hex-highlight censored-key" data-revealed="0">${masked}</span> <button type="button" class="small reveal-key-btn">Show</button>`;
+  const keySpan = entry.querySelector('.censored-key');
+  const btn = entry.querySelector('.reveal-key-btn');
+  btn.addEventListener('click', () => {
+    const revealed = keySpan.dataset.revealed === '1';
+    keySpan.textContent = revealed ? masked : key;
+    keySpan.dataset.revealed = revealed ? '0' : '1';
+    btn.textContent = revealed ? 'Show' : 'Hide';
+  });
+  el.appendChild(entry);
   el.scrollTop = el.scrollHeight;
 }
 
@@ -830,15 +1104,29 @@ function updateContractPill() {
 }
 
 // ---------- wallet connect ----------
+// Friendly names for the chains this demo actually cares about -- "chain
+// 11155111" means nothing at a glance, "Sepolia" does. Anything unrecognized
+// still shows its raw id so it's never just silently blank.
+const KNOWN_CHAINS = { 1: 'Mainnet', 11155111: 'Sepolia', 5: 'Goerli', 17000: 'Holesky', 137: 'Polygon', 80002: 'Polygon Amoy' };
+function chainLabel(chainId) {
+  const id = Number(chainId);
+  return KNOWN_CHAINS[id] || `Chain ${id}`;
+}
+
 async function refreshWalletState() {
   if (!provider) return;
   const accounts = await provider.send('eth_accounts', []); // does not prompt
+  const dot = document.getElementById('netPillDot');
+  const textEl = document.getElementById('netPillText');
+  const copyBtn = document.getElementById('netPillCopyBtn');
   if (!accounts.length) {
     currentAddress = null;
     signer = null;
     contract = null;
-    document.getElementById('netPill').textContent = 'not connected';
-    document.getElementById('netPill').className = 'pill';
+    dot.className = 'net-dot';
+    textEl.textContent = 'not connected';
+    copyBtn.hidden = true;
+    document.getElementById('netPill').classList.remove('online');
     document.getElementById('connectBtn').textContent = 'Connect Wallet';
     updateDebugStatus();
     return;
@@ -846,14 +1134,26 @@ async function refreshWalletState() {
   signer = await provider.getSigner();
   currentAddress = await signer.getAddress();
   const net = await provider.getNetwork();
-  const pill = document.getElementById('netPill');
-  pill.textContent = `${currentAddress.slice(0,6)}...${currentAddress.slice(-4)} · chain ${net.chainId}`;
-  pill.className = 'pill';
-  document.getElementById('connectBtn').textContent = `Connected (${accounts.length} acct${accounts.length > 1 ? 's' : ''}) -- click to manage`;
+  dot.className = 'net-dot online';
+  textEl.textContent = `${currentAddress.slice(0,6)}...${currentAddress.slice(-4)} · ${chainLabel(net.chainId)}`;
+  copyBtn.hidden = false;
+  document.getElementById('netPill').classList.add('online');
+  document.getElementById('connectBtn').textContent = 'Manage account';
   initContract();
   loadListings();
   updateDebugStatus();
 }
+
+document.getElementById('netPillCopyBtn').addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (!currentAddress) return;
+  try {
+    await navigator.clipboard.writeText(currentAddress);
+    toast('Address copied.', 'success', 1600);
+  } catch (err) {
+    toast('Could not copy -- clipboard access blocked by the browser.', 'error');
+  }
+});
 
 // ---------- always-visible connection/eligibility status panel ----------
 // Exists specifically so "I pasted a key but can't buy" is self-diagnosable:
@@ -873,7 +1173,7 @@ function updateDebugStatus() {
   connectedEl.textContent = currentAddress || 'not connected';
 
   let fixedAddr = null;
-  const rawKey = (document.getElementById('seller-agent-fixed-key') || {}).value?.trim();
+  const rawKey = window.ToySigner ? ToySigner.normalizePrivKey((document.getElementById('seller-agent-fixed-key') || {}).value) : '';
   if (rawKey) {
     try {
       const d = BigInt(rawKey);
@@ -1062,6 +1362,59 @@ document.getElementById('revokeBtn').addEventListener('click', withLoading(
 }));
 
 // ---------- marketplace ----------
+// Always hide Failed/Cancelled-status listings from the marketplace view and
+// from the stats strip -- this can't touch the chain itself (a settled Failed
+// listing and its slashed stake are already final, immutable history), but
+// there's no reason early "still learning"/development-era runs should keep
+// dragging down the verified rate or cluttering the listings you show off.
+// No toggle for this anymore -- it's just always on.
+function hideFailedEnabled() {
+  return true;
+}
+
+// Public Sepolia RPC endpoints occasionally blip on a single call. Without
+// this, a transient failure here silently rendered as "not eligible" --
+// indistinguishable from actually not being the target, which is exactly the
+// confusing "it says I'm the target but won't let me buy" symptom. Retries a
+// couple of times before giving up, and reports whether it failed outright
+// (as opposed to genuinely returning false) so the UI can say so honestly.
+async function checkEligibleWithRetry(contract, id, addr, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return { eligible: await contract.isEligibleBuyer(id, addr), error: false };
+    } catch (e) {
+      if (attempt === retries) return { eligible: false, error: true };
+      await new Promise(r => setTimeout(r, 350 * (attempt + 1)));
+    }
+  }
+}
+
+// How long a successfully-verified listing stays in its normal section
+// before sliding down into "Past transactions" at the bottom of the page.
+const ARCHIVE_AFTER_MS = 15 * 60 * 1000;
+
+function verifiedSeenStorageKey(contractAddr) { return `bbb_verified_seen_${contractAddr.toLowerCase()}`; }
+function loadVerifiedSeen() {
+  const addr = addrInput.value.trim();
+  if (!addr) return {};
+  try { return JSON.parse(localStorage.getItem(verifiedSeenStorageKey(addr)) || '{}'); } catch (e) { return {}; }
+}
+function saveVerifiedSeen(map) {
+  const addr = addrInput.value.trim();
+  if (!addr) return;
+  try { localStorage.setItem(verifiedSeenStorageKey(addr), JSON.stringify(map)); } catch (e) {}
+}
+
+// Cache of the last set of items fetched from chain, so the 15-minute
+// archive move can be re-evaluated on a timer purely client-side -- no need
+// to re-hit the RPC endpoint just because a clock threshold was crossed.
+let lastFetchedItems = null;
+let lastHiddenCount = 0;
+// Keyed by listing id -- lets the fullscreen disclosure view rebuild its
+// content without re-fetching from chain or stuffing long finding text into
+// HTML attributes.
+const itemsById = {};
+
 async function loadListings() {
   const root = document.getElementById('listingsRoot');
   if (!contract) {
@@ -1072,52 +1425,137 @@ async function loadListings() {
   root.innerHTML = '<div class="grid">' + '<div class="skeleton"></div>'.repeat(3) + '</div>';
   try {
     const count = await contract.listingCount();
-    const items = [];
+    const allItems = [];
     for (let i = 0n; i < count; i++) {
       const l = await contract.getListing(i);
       const rep = await contract.reputationScoreBps(l.seller);
       const isOwner = currentAddress && l.seller.toLowerCase() === currentAddress.toLowerCase();
       const isBuyer = currentAddress && l.buyer && l.buyer !== ethers.ZeroAddress && l.buyer.toLowerCase() === currentAddress.toLowerCase();
+      const addrMatchesTarget = currentAddress && l.targetAccount.toLowerCase() === currentAddress.toLowerCase();
       let eligible = false;
+      let eligibleError = false;
       if (currentAddress && !isOwner) {
-        try { eligible = await contract.isEligibleBuyer(i, currentAddress); } catch (e) { eligible = false; }
+        const result = await checkEligibleWithRetry(contract, i, currentAddress);
+        eligible = result.eligible;
+        eligibleError = result.error;
       }
-      items.push({ id: i, l, rep, isOwner, isBuyer, eligible });
+      const item = { id: i, l, rep, isOwner, isBuyer, eligible, eligibleError, addrMatchesTarget };
+      allItems.push(item);
+      itemsById[i.toString()] = item;
     }
 
-    if (!items.length) {
+    if (!allItems.length) {
       root.innerHTML = '<div class="empty-state">No listings yet -- create one in the "Sell a Finding" tab.</div>';
+      document.getElementById('statsStrip').hidden = true;
+      lastFetchedItems = null;
       return;
     }
 
-    const yours = items.filter(x => x.isOwner);
-    const canBuy = items.filter(x => !x.isOwner && Number(x.l.status) === 0 && x.eligible);
-    const yourPurchases = items.filter(x => !x.isOwner && x.isBuyer);
-    const locked = items.filter(x => !x.isOwner && !x.isBuyer && Number(x.l.status) === 0 && !x.eligible);
-    const other = items.filter(x => !x.isOwner && !x.isBuyer && Number(x.l.status) !== 0 &&
-      !(x.eligible && Number(x.l.status) === 0));
+    const hideFailed = hideFailedEnabled();
+    const isHiddenStatus = (x) => Number(x.l.status) === 3 /* Failed */ || Number(x.l.status) === 5 /* Cancelled */;
+    const hiddenCount = hideFailed ? allItems.filter(isHiddenStatus).length : 0;
+    const items = hideFailed ? allItems.filter(x => !isHiddenStatus(x)) : allItems;
 
-    let html = '';
-    html += section('Affects your wallet -- you can buy', canBuy,
-      'These listings name your connected address (or an account that has authorized it) as the target. You are eligible to purchase.', true);
-    html += section('Your listings', yours,
-      'Listings you created as the seller. You cannot purchase your own listing.', true);
-    html += section('Your purchases', yourPurchases,
-      'Listings you have bought into escrow or already resolved.', true);
-    html += section('Other listings (not eligible)', locked,
-      "Public metadata only, purchase disabled. Only the address named as \"target\" (or a delegate that address has authorized) can buy a listing -- so browsing here for something to buy as leverage against someone else's wallet will not work.", false);
-    html += section('Resolved / in progress (not yours)', other,
-      'Listings belonging to other sellers/buyers, shown for transparency.', false);
+    // Record "first seen verified" for any newly-Verified listing, so the
+    // 15-minute countdown starts from when this browser first observed it,
+    // not from some on-chain timestamp we'd otherwise have to fetch separately.
+    const verifiedSeen = loadVerifiedSeen();
+    let seenChanged = false;
+    for (const x of items) {
+      const key = x.id.toString();
+      if (Number(x.l.status) === 2 && !(key in verifiedSeen)) {
+        verifiedSeen[key] = Date.now();
+        seenChanged = true;
+      }
+    }
+    if (seenChanged) saveVerifiedSeen(verifiedSeen);
 
-    root.innerHTML = html || '<div class="empty-state">Nothing to show yet.</div>';
-    attachCardHandlers();
-    computeStats(items);
+    lastFetchedItems = items;
+    lastHiddenCount = hiddenCount;
+    renderListings(items, hiddenCount);
   } catch (e) {
     console.error(e);
     root.innerHTML = `<div class="empty-state">Couldn't load listings: ${escapeHtml(e.message || String(e))}</div>`;
+    lastFetchedItems = null;
   }
 }
 document.getElementById('refreshBtn').addEventListener('click', loadListings);
+
+function renderListings(items, hiddenCount) {
+  const root = document.getElementById('listingsRoot');
+  if (!items.length) {
+    root.innerHTML = `<div class="empty-state">${hiddenCount} failed/cancelled listing${hiddenCount === 1 ? '' : 's'} hidden. Nothing else to show yet -- create one in the "Sell a Finding" tab.</div>`;
+    document.getElementById('statsStrip').hidden = true;
+    return;
+  }
+
+  const verifiedSeen = loadVerifiedSeen();
+  const now = Date.now();
+  const isArchived = (x) => Number(x.l.status) === 2 &&
+    verifiedSeen[x.id.toString()] && (now - verifiedSeen[x.id.toString()] >= ARCHIVE_AFTER_MS);
+  const active = items.filter(x => !isArchived(x));
+  const pastTransactions = items.filter(isArchived);
+
+  const yours = active.filter(x => x.isOwner);
+  const canBuy = active.filter(x => !x.isOwner && Number(x.l.status) === 0 && x.eligible);
+  const yourPurchases = active.filter(x => !x.isOwner && x.isBuyer);
+  const locked = active.filter(x => !x.isOwner && !x.isBuyer && Number(x.l.status) === 0 && !x.eligible);
+  const other = active.filter(x => !x.isOwner && !x.isBuyer && Number(x.l.status) !== 0 &&
+    !(x.eligible && Number(x.l.status) === 0));
+
+  let html = '';
+  if (hiddenCount) {
+    html += `<p class="hint" style="margin-bottom:0.8rem;">${hiddenCount} failed/cancelled listing${hiddenCount === 1 ? '' : 's'} hidden from view and excluded from the stats below.</p>`;
+  }
+  html += section('Affects your wallet -- you can buy', canBuy,
+    'These listings name your connected address (or an account that has authorized it) as the target. You are eligible to purchase.', true);
+  html += section('Your listings', yours,
+    'Listings you created as the seller. You cannot purchase your own listing.', true);
+  html += section('Your purchases', yourPurchases,
+    'Listings you have bought into escrow or already resolved.', true);
+  html += section('Other listings (not eligible)', locked,
+    "Public metadata only, purchase disabled. Only the address named as \"target\" (or a delegate that address has authorized) can buy a listing -- so browsing here for something to buy as leverage against someone else's wallet will not work.", false);
+  html += section('Resolved / in progress (not yours)', other,
+    'Listings belonging to other sellers/buyers, shown for transparency.', false);
+
+  root.innerHTML = html || '<div class="empty-state">Nothing currently active -- see Past transactions below.</div>';
+
+  // Verified listings move down here automatically, 15 minutes after this
+  // browser first saw each one settle -- keeps the main view focused on
+  // what's still in progress instead of accumulating every past sale.
+  const pastRoot = document.getElementById('pastTransactionsRoot');
+  const pastSection = document.getElementById('pastTransactionsSection');
+  if (pastTransactions.length) {
+    pastSection.hidden = false;
+    pastRoot.innerHTML = `<div class="grid">${pastTransactions.map(x => renderCard(x)).join('')}</div>`;
+  } else {
+    pastSection.hidden = true;
+    pastRoot.innerHTML = '';
+  }
+
+  attachCardHandlers();
+  computeStats(items);
+}
+
+// Re-check the 15-minute archive threshold periodically without re-hitting
+// the RPC endpoint -- otherwise a listing would only ever move to "Past
+// transactions" the next time something forces a full reload.
+setInterval(() => {
+  if (lastFetchedItems) renderListings(lastFetchedItems, lastHiddenCount);
+}, 60 * 1000);
+
+// Belt-and-suspenders auto-reveal sweep: the reveal is already re-attempted
+// the instant a purchase is seen live (armAutoReveal) and the instant this
+// tab (re)connects or switches accounts (rearmPendingSellerReveals via
+// initContract), which covers the normal flow with no click ever needed.
+// This periodic sweep exists only to catch the rare edge case where both of
+// those moments were missed (e.g. the purchase happened while this tab was
+// on the wrong account and MetaMask's account list never visibly changed
+// after switching back) -- so a saved-evidence listing never sits Escrowed
+// for more than a few seconds without at least being retried automatically.
+setInterval(() => {
+  if (contract) rearmPendingSellerReveals();
+}, 20 * 1000);
 
 function section(title, items, desc, expanded) {
   if (!items.length) return '';
@@ -1138,11 +1576,16 @@ function sevClass(sev) {
   return 'default';
 }
 
-function renderCard({ id, l, rep, isOwner, isBuyer, eligible }) {
+function renderCard({ id, l, rep, isOwner, isBuyer, eligible, eligibleError, addrMatchesTarget }) {
   const status = STATUS_NAMES[Number(l.status)] || 'Unknown';
   const priceEth = ethers.formatEther(l.price);
   const repPct = (Number(rep) / 100).toFixed(0);
   const disclosed = status === 'Verified' && l.finding && l.finding.length > 0;
+  // The full finding (what's compromised, the raw signature evidence) is only
+  // shown to the two parties in the transaction -- the seller and the buyer.
+  // Everyone else browsing the marketplace only learns that this listing
+  // resolved successfully, not what was actually disclosed.
+  const canSeeDisclosure = disclosed && (isOwner || isBuyer);
   const cardClass = isOwner ? 'yours'
     : (eligible && status === 'Listed') ? 'eligible'
     : isBuyer ? 'purchased'
@@ -1160,11 +1603,36 @@ function renderCard({ id, l, rep, isOwner, isBuyer, eligible }) {
       actionHtml = `<button class="danger-ghost cancel-btn" data-id="${id}">Cancel listing (reclaim stake)</button>`;
     } else if (eligible) {
       actionHtml = `<button class="primary buy-btn" data-id="${id}" data-price="${l.price}">Buy for ${priceEth} ETH</button>`;
+    } else if (addrMatchesTarget) {
+      // Connected address matches the target byte-for-byte, yet the on-chain
+      // check still didn't confirm eligibility -- either a transient RPC
+      // failure (checkEligibleWithRetry already retried a couple of times)
+      // or something genuinely wrong on-chain (e.g. a revoked delegation).
+      // Either way this is NOT the normal "wrong account" case, so it gets a
+      // different message plus a one-click way to re-check right now.
+      actionHtml = `<div class="lock-note">Your connected wallet matches this listing's target address exactly` +
+        (eligibleError ? ', but the on-chain eligibility check failed (likely a testnet RPC hiccup).' : ', but the contract still reports this address as not eligible.') +
+        ` <button class="small recheck-btn" data-id="${id}" style="margin-top:0.4rem;">Check again</button></div>`;
     } else {
       actionHtml = `<div class="lock-note">Not eligible to purchase -- only <span class="mono">${l.targetAccount.slice(0,8)}...${l.targetAccount.slice(-4)}</span> or an address it has authorized can buy this.</div>`;
     }
   } else if (status === 'Escrowed') {
-    actionHtml = `<button class="timeout-btn small" data-id="${id}">Claim timeout (if reveal window passed)</button>`;
+    if (isOwner && getStoredEvidenceFor(id)) {
+      // The reveal is submitted automatically -- no human judgment call
+      // involved, it's just handing the contract the finding text + signatures
+      // that were already committed to at listing time. This browser attempts
+      // it the instant a purchase is seen live, the instant it (re)connects as
+      // the seller, and again every ~20s as a safety net, all with zero clicks.
+      // This button only exists for the rare case all of those got missed.
+      actionHtml = `<div class="lock-note">Purchased -- your reveal is being submitted automatically (usually within a few seconds).</div>` +
+        `<button class="small manual-reveal-btn" data-id="${id}" style="margin-top:0.4rem;">Still stuck? Retry reveal now</button>`;
+    } else if (isOwner) {
+      actionHtml = `<div class="lock-note">Purchased -- waiting to auto-reveal. Evidence for this listing wasn't found saved in this browser (e.g. a different tab or device created it); use the Reveal form under "Sell a Finding" with listing id ${id}.</div>` +
+        `<button class="timeout-btn small" data-id="${id}" style="margin-top:0.4rem;">Claim timeout (if reveal window passed)</button>`;
+    } else {
+      actionHtml = `<div class="lock-note">Purchased -- the seller's disclosure reveals automatically, no action on their end required. If the reveal window passes with nothing submitted, you get refunded and the seller's stake is slashed.</div>` +
+        `<button class="timeout-btn small" data-id="${id}" style="margin-top:0.4rem;">Claim timeout (if reveal window passed)</button>`;
+    }
   }
 
   return `
@@ -1177,20 +1645,175 @@ function renderCard({ id, l, rep, isOwner, isBuyer, eligible }) {
     <div class="row"><span>Target</span><span class="mono">${l.targetAccount.slice(0,8)}...${l.targetAccount.slice(-4)}</span></div>
     <div class="row"><span>Seller</span><span class="mono">${l.seller.slice(0,8)}...${l.seller.slice(-4)} (${repPct}%)</span></div>
     <div class="row"><span>Price</span><span>${priceEth} ETH</span></div>
-    ${disclosed
-      ? `<div class="finding-box">${escapeHtml(l.finding)}</div>
-         <button class="small derive-key-btn" data-id="${id}" data-target="${l.targetAccount}">Derive private key from this disclosure</button>
-         <div class="derive-key-result" id="derive-result-${id}"></div>`
-      : `<div class="finding-box">Locked until purchase + verified reveal</div>`}
+    ${canSeeDisclosure
+      ? `<div class="compromised-box">
+           <div class="k">What's compromised</div>
+           <ul>
+             <li>Full control of this account's private key</li>
+             <li>Ability to sign and send transactions as this address</li>
+             <li>Ability to sign arbitrary messages (impersonation, fraudulent auth)</li>
+           </ul>
+           <p class="muted" style="font-size:0.72rem; margin:0.5rem 0 0;">
+             Demo data: this signature pair was generated by the site's synthetic signer for this
+             walkthrough, not pulled from a real wallet in the wild. The math and the on-chain
+             verification below are the real thing -- ecrecover really is recovering a real private
+             key from these two signatures. A production version would need a real source of reused
+             signatures (e.g. a scanner watching mempool/chain data for repeated <span class="mono">r</span>
+             values across transactions from the same address) instead of a scripted demo target.
+           </p>
+         </div>
+         <button class="small fullscreen-btn" data-id="${id}" style="margin-top:0.5rem;">Open full screen</button>
+         <details class="step">
+           <summary><b>Deep dive into the proof</b> <span class="muted">-- seller's writeup and the raw signature evidence</span></summary>
+           <p style="white-space:pre-wrap; word-break:break-word;">${highlightEvidence(l.finding)}</p>
+           <button class="small derive-key-btn" data-id="${id}" data-target="${l.targetAccount}">Derive private key from this disclosure</button>
+           <div class="derive-key-result" id="derive-result-${id}"></div>
+         </details>`
+      : disclosed
+      ? `<div class="finding-box">Verified -- this transaction is closed.</div>`
+      : `<div class="finding-box">Locked. Buying is what triggers the seller's reveal -- verified on-chain, not just claimed.</div>`}
     ${actionHtml}
   </div>`;
+}
+
+/** Escapes HTML, then wraps hex strings (addresses, hashes, keys -- anything
+ * 0x-prefixed) in a colored span so they visually pop out of the proof
+ * writeup instead of blending into the surrounding prose. */
+function highlightEvidence(text) {
+  return escapeHtml(text).replace(/0x[a-fA-F0-9]{6,}/g, m => `<span class="hex-highlight">${m}</span>`);
 }
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function shortAddr(a) {
+  return a ? `${a.slice(0,6)}...${a.slice(-4)}` : a;
+}
+
+// ---------- quick buy: sign a purchase directly with a pasted key, never ----------
+// touching MetaMask's active account. This exists because switching MetaMask to
+// the exact account a listing targets was the single biggest source of "I can't
+// buy anything" -- signing locally with the key and broadcasting through the
+// same provider sidesteps that entirely. Still requires Sepolia ETH in that
+// account (this can't pay for you), and it's demo tooling: never paste a key
+// that protects real funds.
+document.getElementById('quickbuy-scan').addEventListener('click', withLoading(
+  document.getElementById('quickbuy-scan'), 'Scanning...', async () => {
+    const key = window.ToySigner ? ToySigner.normalizePrivKey(document.getElementById('quickbuy-key').value) : document.getElementById('quickbuy-key').value.trim();
+    const resultsEl = document.getElementById('quickbuy-results');
+    resultsEl.innerHTML = '';
+    if (!contract) { toast('Connect a wallet and set a contract address first.', 'error'); return; }
+    let addr;
+    try {
+      const d = BigInt(key);
+      if (d === 0n || !window.ToySigner || d >= ToySigner.N) throw new Error('bad key');
+      addr = ToySigner.toyPrivToAddress(key);
+    } catch (e) {
+      toast('That does not look like a valid private key.', 'error');
+      return;
+    }
+    let eligible = [];
+    try {
+      const count = await contract.listingCount();
+      for (let i = 0n; i < count; i++) {
+        const l = await contract.getListing(i);
+        if (Number(l.status) !== 0) continue; // only Listed (purchasable) entries
+        let ok = false;
+        try { ok = await contract.isEligibleBuyer(i, addr); } catch (e) { /* not eligible */ }
+        if (ok) eligible.push({ id: i, l });
+      }
+    } catch (e) {
+      toast("Couldn't scan listings: " + (e.shortMessage || e.message || e), 'error');
+      return;
+    }
+    if (!eligible.length) {
+      resultsEl.innerHTML = `<div class="empty-state">${shortAddr(addr)} is not eligible to buy any currently-listed finding right now.</div>`;
+      return;
+    }
+    resultsEl.innerHTML = `<p class="hint">Buying as <span class="mono">${addr}</span>:</p>` +
+      eligible.map(x => `
+        <div class="row" style="align-items:center; margin-bottom:0.5rem;">
+          <span>#${x.id} -- ${escapeHtml(x.l.title || '(untitled)')} (${ethers.formatEther(x.l.price)} ETH)</span>
+          <button class="small primary quickbuy-btn" data-id="${x.id}" data-price="${x.l.price}">Buy</button>
+        </div>`).join('');
+    resultsEl.querySelectorAll('.quickbuy-btn').forEach(btn => {
+      btn.addEventListener('click', withLoading(btn, 'Sending...', async () => {
+        try {
+          const wallet = new ethers.Wallet(key, provider);
+          const asWallet = new ethers.Contract(contract.target, window.BLACKBOX_ABI, wallet);
+          const tx = await asWallet.purchase(btn.dataset.id, { value: btn.dataset.price });
+          await tx.wait();
+          toast(`Bought listing #${btn.dataset.id} as ${shortAddr(addr)}. Escrowed -- waiting on the seller's reveal.`, 'success');
+          document.getElementById('quickbuy-scan').click();
+          await loadListings();
+        } catch (e) {
+          toast('Purchase failed: ' + (e.shortMessage || e.message || e), 'error');
+        }
+      }));
+    });
+  }
+));
+
 function attachCardHandlers() {
+  document.querySelectorAll('.manual-reveal-btn').forEach(btn => {
+    btn.addEventListener('click', withLoading(btn, 'Submitting...', async () => {
+      const id = btn.dataset.id;
+      if (!contract) return;
+      const ev = getStoredEvidenceFor(id);
+      if (!ev) return toast('No saved evidence for this listing in this browser.', 'error');
+      try {
+        const result = await trySendReveal(id, ev);
+        if (result.sent && result.verified) {
+          toast(`Reveal submitted for listing #${id} and VERIFIED on-chain -- the buyer now sees the full disclosure and you've been paid.`, 'success');
+          delete sellerAgentEvidence[id];
+          const stored2 = loadEvidenceFromStorage();
+          delete stored2[id];
+          localStorage.setItem(evidenceStorageKey(addrInput.value.trim()), JSON.stringify(stored2));
+          await loadListings();
+        } else if (result.sent && result.failed) {
+          // The transaction confirmed, but reveal() itself doesn't revert on
+          // a mismatch -- it just settles the listing as Failed, refunds the
+          // buyer, and slashes the seller's stake. Reporting this plainly
+          // instead of a generic "submitted" toast is the whole point: a
+          // confirmed transaction is not the same thing as a successful
+          // disclosure, and this is exactly the gap that made "verified
+          // rate"/"volume settled" look stuck without explanation.
+          toast(`Reveal for listing #${id} was submitted, but the contract rejected the evidence and marked it Failed -- the buyer was refunded and your stake was slashed. The finding text or signatures didn't match what was committed when the listing was created.`, 'error');
+          delete sellerAgentEvidence[id];
+          const stored = loadEvidenceFromStorage();
+          delete stored[id];
+          localStorage.setItem(evidenceStorageKey(addrInput.value.trim()), JSON.stringify(stored));
+          await loadListings();
+        } else if (result.reason === 'wrong-signer') {
+          // Checked BEFORE sending anything, so no MetaMask prompt and no gas
+          // spent for a doomed transaction -- just tell them what to do.
+          toast(`This listing's seller is ${shortAddr(result.seller)}, but you're connected as ${shortAddr(currentAddress)}. Switch MetaMask to the seller account and try again -- nothing was sent.`, 'error');
+        } else {
+          toast(`Can't submit reveal right now -- ${result.reason}.`, 'error');
+        }
+      } catch (e) {
+        toast('Reveal failed: ' + (e.shortMessage || e.message || e), 'error');
+      }
+    }));
+  });
+  document.querySelectorAll('.recheck-btn').forEach(btn => {
+    btn.addEventListener('click', withLoading(btn, 'Checking...', async () => {
+      const id = btn.dataset.id;
+      if (!contract || !currentAddress) return;
+      try {
+        const result = await contract.isEligibleBuyer(id, currentAddress);
+        if (result) {
+          toast(`Confirmed eligible on-chain for listing #${id}. Reloading...`, 'success');
+          await loadListings();
+        } else {
+          toast(`The contract confirms ${shortAddr(currentAddress)} is genuinely not eligible for listing #${id} right now -- not an RPC issue.`, 'error');
+        }
+      } catch (e) {
+        toast('Eligibility check failed: ' + (e.shortMessage || e.message || e), 'error');
+      }
+    }));
+  });
   document.querySelectorAll('.buy-btn').forEach(btn => {
     btn.addEventListener('click', withLoading(btn, 'Confirm in wallet...', async () => {
       const id = btn.dataset.id;
@@ -1237,48 +1860,112 @@ function attachCardHandlers() {
   });
   document.querySelectorAll('.derive-key-btn').forEach(btn => {
     btn.addEventListener('click', withLoading(btn, 'Decoding on-chain evidence...', async () => {
-      const id = btn.dataset.id;
-      const target = btn.dataset.target;
-      const resultBox = document.getElementById(`derive-result-${id}`);
-      resultBox.innerHTML = '';
-      try {
-        // Pull the ACTUAL on-chain transaction that revealed this listing --
-        // not anything typed into this page -- and decode its real
-        // calldata. This is what makes the derived key trustworthy: it's
-        // reading the same bytes Etherscan would show you.
-        const events = await contract.queryFilter(contract.filters.Verified(id), 0, 'latest');
-        if (!events.length) {
-          resultBox.innerHTML = `<div class="lock-note">Could not find the reveal transaction on-chain (RPC may limit lookback range). Try a fresh page load, or check this listing's history directly on Etherscan.</div>`;
-          return;
-        }
-        const tx = await provider.getTransaction(events[events.length - 1].transactionHash);
-        const decoded = contract.interface.decodeFunctionData('reveal', tx.data);
-        const [, , msgHash1, , r, s1, msgHash2, , s2] = decoded;
+      const resultBox = document.getElementById(`derive-result-${btn.dataset.id}`);
+      await deriveKeyForListing(btn.dataset.id, btn.dataset.target, resultBox);
+    }));
+  });
+  document.querySelectorAll('.fullscreen-btn').forEach(btn => {
+    btn.addEventListener('click', () => openFullscreenDisclosure(btn.dataset.id));
+  });
+}
 
-        const result = ToySigner.recoverPrivateKeyFromNonceReuse(msgHash1, s1, msgHash2, s2, r, target);
-        if (!result) {
-          resultBox.innerHTML = `<div class="lock-note">Recovery math did not converge on these values -- the signatures may not be a genuine shared-nonce pair.</div>`;
-          return;
-        }
-        resultBox.innerHTML = `
-          <div class="finding-box" style="border-color:${result.matchesTarget ? 'var(--success)' : 'var(--danger)'};">
+/** Shared by the inline "Deep dive" button and the fullscreen viewer's own
+ * derive button -- takes the result element directly rather than looking it
+ * up by a shared id, since the same listing's evidence can be rendered in
+ * two places (the card and the fullscreen overlay) at once. */
+async function deriveKeyForListing(id, target, resultBox) {
+  resultBox.innerHTML = '';
+  try {
+    // Pull the ACTUAL on-chain transaction that revealed this listing -- not
+    // anything typed into this page -- and decode its real calldata. This is
+    // what makes the derived key trustworthy: it's reading the same bytes
+    // Etherscan would show you.
+    const events = await contract.queryFilter(contract.filters.Verified(id), 0, 'latest');
+    if (!events.length) {
+      resultBox.innerHTML = `<div class="lock-note">Could not find the reveal transaction on-chain (RPC may limit lookback range). Try a fresh page load, or check this listing's history directly on Etherscan.</div>`;
+      return;
+    }
+    const tx = await provider.getTransaction(events[events.length - 1].transactionHash);
+    const decoded = contract.interface.decodeFunctionData('reveal', tx.data);
+    const [, , msgHash1, , r, s1, msgHash2, , s2] = decoded;
+
+    const result = ToySigner.recoverPrivateKeyFromNonceReuse(msgHash1, s1, msgHash2, s2, r, target);
+    if (!result) {
+      resultBox.innerHTML = `<div class="lock-note">Recovery math did not converge on these values -- the signatures may not be a genuine shared-nonce pair.</div>`;
+      return;
+    }
+    // The recovered private key itself stays masked until deliberately
+    // revealed -- everything else here (derived address, target account,
+    // the raw signatures elsewhere on the card) is either already public on
+    // Sepolia or is the whole point of the disclosure, but the key is the
+    // one piece of data an actual exploit would need kept off-screen by
+    // default, demo or not.
+    const masked = '•'.repeat(Math.max(12, result.privateKey.length - 2));
+    resultBox.innerHTML = `
+      <div class="finding-box" style="border-color:${result.matchesTarget ? 'var(--success)' : 'var(--danger)'};">
 ${result.matchesTarget ? 'Recovered key derives the exact target address -- this disclosure is real, exploit-grade evidence.' : 'Recovered a candidate key, but it does not derive the target address -- treat with suspicion.'}
 
-Recovered private key: ${result.privateKey}
-Derived address:       ${result.address}
-Target account:        ${target}
+Recovered private key: <span class="mono hex-highlight censored-key" data-full="${result.privateKey}" data-revealed="0">${masked}</span> <button type="button" class="small reveal-key-btn">Show</button>
+Derived address:       ${highlightEvidence(result.address)}
+Target account:        ${highlightEvidence(target)}
 
 This was computed live in your browser from the actual reveal() transaction's
 calldata on Sepolia, using k = (h1-h2)(s1-s2)^-1 mod n, d = (s1*k-h1)*r^-1 mod n --
 the same formula a real attacker would use against real nonce reuse. Synthetic
 demo key only; see README Safety note.
-          </div>`;
-      } catch (e) {
-        resultBox.innerHTML = `<div class="lock-note">Derivation failed: ${escapeHtml(e.shortMessage || e.message || String(e))}</div>`;
-      }
-    }));
-  });
+      </div>`;
+    const keySpan = resultBox.querySelector('.censored-key');
+    const revealBtn = resultBox.querySelector('.reveal-key-btn');
+    revealBtn.addEventListener('click', () => {
+      const revealed = keySpan.dataset.revealed === '1';
+      keySpan.textContent = revealed ? masked : keySpan.dataset.full;
+      keySpan.dataset.revealed = revealed ? '0' : '1';
+      revealBtn.textContent = revealed ? 'Show' : 'Hide';
+    });
+  } catch (e) {
+    resultBox.innerHTML = `<div class="lock-note">Derivation failed: ${escapeHtml(e.shortMessage || e.message || String(e))}</div>`;
+  }
 }
+
+/** Opens the "What's compromised" + full proof writeup for one listing in a
+ * larger, easier-to-read overlay -- for the buyer/seller only (the button
+ * that triggers this only ever renders for them, per canSeeDisclosure). */
+function openFullscreenDisclosure(id) {
+  const item = itemsById[id.toString()];
+  if (!item) return toast('Could not find this listing\'s data -- try refreshing.', 'error');
+  const { l } = item;
+  const content = document.getElementById('fullscreenContent');
+  content.innerHTML = `
+    <div class="title" style="font-size:1.15rem;">${escapeHtml(l.title || '(untitled)')} <span class="muted" style="font-weight:400;font-size:0.85rem;">#${id}</span></div>
+    <div class="flex" style="justify-content:space-between; gap:0.5rem; font-size:0.85rem; color:var(--muted); margin-top:0.3rem;"><span>Category</span><span>${escapeHtml(l.category)}</span></div>
+    <div class="flex" style="justify-content:space-between; gap:0.5rem; font-size:0.85rem; color:var(--muted); flex-wrap:wrap;"><span>Target</span><span class="mono hex-highlight" title="${l.targetAccount}">${l.targetAccount.slice(0,8)}...${l.targetAccount.slice(-4)}</span></div>
+    <div class="flex" style="justify-content:space-between; gap:0.5rem; font-size:0.85rem; color:var(--muted); flex-wrap:wrap;"><span>Seller</span><span class="mono hex-highlight" title="${l.seller}">${l.seller.slice(0,8)}...${l.seller.slice(-4)}</span></div>
+    <p class="muted" style="font-size:0.68rem; margin:0.35rem 0 0;">Both are public wallet addresses, not private keys -- everyone can always see who's on either side of a listing. Truncated here to match the rest of the app; hover to see the full address.</p>
+    <div class="compromised-box" style="margin-top:0.9rem;">
+      <div class="k">What's compromised</div>
+      <ul>
+        <li>Full control of this account's private key</li>
+        <li>Ability to sign and send transactions as this address</li>
+        <li>Ability to sign arbitrary messages (impersonation, fraudulent auth)</li>
+      </ul>
+    </div>
+    <h3 style="margin:1.1rem 0 0.3rem; font-size:0.95rem;">Full writeup and signature evidence</h3>
+    <pre class="fs-finding">${highlightEvidence(l.finding)}</pre>
+    <button class="small derive-key-btn-fs" style="margin-top:0.7rem;">Derive private key from this disclosure</button>
+    <div class="derive-key-result" id="fs-derive-result"></div>
+  `;
+  content.querySelector('.derive-key-btn-fs').addEventListener('click', withLoading(
+    content.querySelector('.derive-key-btn-fs'), 'Decoding on-chain evidence...', async () => {
+    await deriveKeyForListing(id, l.targetAccount, document.getElementById('fs-derive-result'));
+  }));
+  document.getElementById('fullscreenHost').hidden = false;
+}
+document.getElementById('fullscreenCloseBtn').addEventListener('click', () => {
+  document.getElementById('fullscreenHost').hidden = true;
+});
+document.getElementById('fullscreenHost').addEventListener('click', (e) => {
+  if (e.target.id === 'fullscreenHost') document.getElementById('fullscreenHost').hidden = true;
+});
 
 // ---------- create listing ----------
 document.getElementById('createListingBtn').addEventListener('click', withLoading(
@@ -1298,6 +1985,14 @@ document.getElementById('createListingBtn').addEventListener('click', withLoadin
   const price = ethers.parseEther(priceEth);
   const stake = price * 1000n / 10000n;
   const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes(finding));
+
+  // The account connected in MetaMask right now becomes this listing's seller,
+  // permanently -- there's no changing it after the transaction confirms. This
+  // confirmation exists because that account is easy to get wrong silently
+  // (switched in MetaMask for an unrelated reason, forgot which one was active).
+  const ok = await confirmDialog('Confirm who is selling',
+    `You're about to submit this listing as the seller from ${currentAddress}, targeting ${target}. This can't be changed after it's submitted. Is that the account you meant to be connected as?`);
+  if (!ok) return;
 
   try {
     const tx = await contract.createListing(target, price, category, severity, title, commitmentHash, { value: stake });
@@ -1364,7 +2059,7 @@ const fixedKeyInput = document.getElementById('seller-agent-fixed-key');
 fixedKeyInput.value = localStorage.getItem('bbb_fixed_target_key') || '';
 function updateFixedKeyPreview() {
   const preview = document.getElementById('fixed-key-preview');
-  const v = fixedKeyInput.value.trim();
+  const v = ToySigner.normalizePrivKey(fixedKeyInput.value);
   if (!v) { preview.textContent = ''; updateDebugStatus(); return; }
   try {
     const d = BigInt(v);
@@ -1373,7 +2068,7 @@ function updateFixedKeyPreview() {
     preview.innerHTML = `Target address: <b>${addr}</b> -- make sure this matches the account you've imported into MetaMask.`;
     localStorage.setItem('bbb_fixed_target_key', v);
   } catch (e) {
-    preview.textContent = 'Not a valid private key (expected 0x + 64 hex characters).';
+    preview.textContent = 'Not a valid private key (64 hex characters, with or without a leading 0x).';
   }
   updateDebugStatus();
 }
@@ -1386,7 +2081,7 @@ document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
   const priceMin = parseFloat(document.getElementById('seller-agent-pricemin').value.trim() || '0.005');
   const priceMax = parseFloat(document.getElementById('seller-agent-pricemax').value.trim() || '0.03');
   const n = Math.max(1, Math.min(5, parseInt(document.getElementById('seller-agent-count').value.trim() || '1', 10)));
-  const fixedKeyRaw = fixedKeyInput.value.trim();
+  const fixedKeyRaw = ToySigner.normalizePrivKey(fixedKeyInput.value);
   let fixedKeyValid = false;
   if (fixedKeyRaw) {
     try {
@@ -1398,6 +2093,20 @@ document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
     }
   }
 
+  // Whichever account MetaMask has active right now becomes the seller of
+  // every listing this run creates -- permanently, the instant each
+  // transaction confirms. Switching MetaMask afterward can't change who
+  // already-created listings belong to, so this is the one moment to catch
+  // "wait, I meant to be connected as someone else."
+  const targetDesc = fixedKeyValid ? ToySigner.toyPrivToAddress(fixedKeyRaw) : 'a fresh synthetic address for each listing';
+  if (fixedKeyValid && currentAddress && targetDesc.toLowerCase() === currentAddress.toLowerCase()) {
+    toast("The connected wallet and the fixed target key are the same account -- that would list you as your own target, which nobody (including you) can then buy. Connect the seller's account instead, or use a different target key.", 'error');
+    return;
+  }
+  const ok = await confirmDialog('Confirm who is selling',
+    `You're about to list as the seller from ${currentAddress}, targeting ${targetDesc}. This can't be changed after submission -- is that the account you meant to be connected as?`);
+  if (!ok) return;
+
   log('sellerAgentLog', `Starting discovery run: generating ${n} nonce-reuse finding(s), price range ${priceMin}-${priceMax} ETH` +
     (fixedKeyValid ? `, reusing your fixed target account.` : `, each against a fresh synthetic target.`));
 
@@ -1405,7 +2114,7 @@ document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
     try {
       const priv = fixedKeyValid ? fixedKeyRaw : ToySigner.randomPrivKey();
       const addr = ToySigner.toyPrivToAddress(priv);
-      log('sellerAgentLog', `[${i+1}/${n}] ${fixedKeyValid ? 'using fixed' : 'scanned synthetic'} target ${short(addr)} -- reused nonce detected across two demo signatures.`);
+      log('sellerAgentLog', `[${i+1}/${n}] ${fixedKeyValid ? 'using fixed' : 'scanned synthetic'} target ${short(addr)} -- reused nonce detected across two demo signatures.`, 'info');
 
       const msg1 = `transfer ${(i+1)} ETH -- session ${Date.now()}-${i}-a`;
       const msg2 = `approve spender -- session ${Date.now()}-${i}-b`;
@@ -1436,7 +2145,7 @@ document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
       const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes(findingText));
       const title = `Auto-discovered nonce reuse (agent run, target ${short(addr)})`;
 
-      log('sellerAgentLog', `[${i+1}/${n}] rule -> severity=${severity}, price=${priceVal} ETH, stake=${ethers.formatEther(stake)} ETH. Submitting listing...`);
+      log('sellerAgentLog', `[${i+1}/${n}] rule -> severity=${severity}, price=${priceVal} ETH, stake=${ethers.formatEther(stake)} ETH. Submitting listing...`, 'info');
       const tx = await contract.createListing(addr, price, 'ECDSA Nonce Reuse', severity, title, commitmentHash, { value: stake });
       const receipt = await tx.wait();
 
@@ -1447,44 +2156,82 @@ document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
           if (parsed && parsed.name === 'Listed') { id = parsed.args.id; break; }
         } catch (e) { /* not our event */ }
       }
-      if (id === null) { log('sellerAgentLog', `[${i+1}/${n}] listed, but could not determine listing id from receipt -- auto-reveal won't be armed for it.`); continue; }
+      if (id === null) { log('sellerAgentLog', `[${i+1}/${n}] listed, but could not determine listing id from receipt -- auto-reveal won't be armed for it.`, 'error'); continue; }
 
       if (fixedKeyValid) {
-        log('sellerAgentLog', `[${i+1}/${n}] listing #${id} live, targeting your fixed demo account (${short(addr)}) -- switch to it in MetaMask and buy whenever you're ready.`);
+        log('sellerAgentLog', `[${i+1}/${n}] listing #${id} live, targeting your fixed demo account (${short(addr)}) -- switch to it in MetaMask and buy whenever you're ready.`, 'success');
       } else {
-        log('sellerAgentLog', `[${i+1}/${n}] listing #${id} live. Target private key (demo-only, never real): ${priv}`);
-        log('sellerAgentLog', `[${i+1}/${n}] to purchase this listing, import that key into a demo wallet, fund it with testnet ETH, and connect as that account -- or paste it into "Fixed target private key" above so future runs reuse it.`);
+        logWithKey('sellerAgentLog', `[${i+1}/${n}] listing #${id} live. Target private key (demo-only, never real):`, priv, 'success');
+        log('sellerAgentLog', `[${i+1}/${n}] to purchase this listing, import that key into a demo wallet, fund it with testnet ETH, and connect as that account -- or paste it into "Fixed target private key" above so future runs reuse it.`, 'info');
       }
 
       sellerAgentEvidence[id.toString()] = { findingText, h1, v1: sig1.v, r: sig1.r, s1: sig1.s, h2, v2: sig2.v, s2: sig2.s };
       saveEvidenceToStorage();
       armAutoReveal(id);
     } catch (e) {
-      log('sellerAgentLog', `[${i+1}/${n}] failed -- ${e.shortMessage || e.message || e}`);
+      log('sellerAgentLog', `[${i+1}/${n}] failed -- ${e.shortMessage || e.message || e}`, 'error');
     }
   }
-  log('sellerAgentLog', `Discovery run complete.`);
+  log('sellerAgentLog', `Discovery run complete.`, 'success');
   loadListings();
 }));
 
+/**
+ * Submits reveal(id, ...evidence) -- but ONLY after confirming, with a fresh
+ * on-chain read, that the currently-connected wallet actually IS this
+ * listing's seller. reveal() is onlySeller, so calling it from any other
+ * account is guaranteed to revert -- and a real transaction that reverts
+ * still costs real gas once it's broadcast. Checking first means a
+ * wrong-account attempt never reaches MetaMask at all: no signature prompt,
+ * no gas spent, just a clear "wrong account" result returned to the caller.
+ */
+async function trySendReveal(id, evidence) {
+  if (!contract || !currentAddress) return { sent: false, reason: 'not connected' };
+  const l = await contract.getListing(id);
+  if (Number(l.status) !== 1) return { sent: false, reason: 'not awaiting reveal (status changed)' };
+  if (l.seller.toLowerCase() !== currentAddress.toLowerCase()) {
+    return { sent: false, reason: 'wrong-signer', seller: l.seller };
+  }
+  const tx = await contract.reveal(id, evidence.findingText, evidence.h1, evidence.v1, evidence.r, evidence.s1, evidence.h2, evidence.v2, evidence.s2);
+  await tx.wait();
+  // reveal() does NOT revert on a mismatched finding/signature -- it settles
+  // the listing as Failed internally and returns normally (see
+  // BlackBoxBazaar.sol's _settleFailed branches). So a transaction that
+  // confirms without reverting is NOT the same thing as a successful
+  // disclosure -- it could just as easily mean the buyer got refunded and
+  // the seller's stake got slashed. Read the listing back to find out which
+  // one actually happened, instead of assuming "confirmed" means "verified".
+  const after = await contract.getListing(id);
+  const finalStatus = Number(after.status);
+  return { sent: true, verified: finalStatus === 2, failed: finalStatus === 3, status: finalStatus };
+}
+
 function armAutoReveal(id) {
   const key = id.toString();
-  log('sellerAgentLog', `Watching listing #${key} -- will auto-reveal the moment it's purchased, no human step required.`);
+  log('sellerAgentLog', `Watching listing #${key} -- will auto-reveal the moment it's purchased, no human step required.`, 'info');
   const filter = contract.filters.Purchased(id);
   contract.once(filter, async (...args) => {
     const ev = args[args.length - 1];
     const evidence = sellerAgentEvidence[key];
     if (!evidence) return;
-    log('sellerAgentLog', `Listing #${key} purchased by ${short(ev.args.buyer)} -- auto-revealing now.`);
+    log('sellerAgentLog', `Listing #${key} purchased by ${short(ev.args.buyer)} -- attempting auto-reveal now.`, 'info');
     try {
-      const tx = await contract.reveal(id, evidence.findingText, evidence.h1, evidence.v1, evidence.r, evidence.s1, evidence.h2, evidence.v2, evidence.s2);
-      await tx.wait();
-      log('sellerAgentLog', `Listing #${key} auto-reveal submitted. Check Marketplace for Verified status.`);
-      delete sellerAgentEvidence[key];
-      saveEvidenceToStorage();
-      loadListings();
+      const result = await trySendReveal(key, evidence);
+      if (result.sent) {
+        log('sellerAgentLog', result.verified
+          ? `Listing #${key} auto-reveal submitted and VERIFIED on-chain -- paid out.`
+          : `Listing #${key} reveal was submitted but the contract rejected the evidence (status: ${STATUS_NAMES[result.status]}) -- buyer refunded, your stake was slashed. This means the finding text or signatures didn't actually match what was committed at listing time.`,
+          result.verified ? 'success' : 'error');
+        delete sellerAgentEvidence[key];
+        saveEvidenceToStorage();
+        loadListings();
+      } else if (result.reason === 'wrong-signer') {
+        log('sellerAgentLog', `Listing #${key} was purchased, but this browser is currently connected as a different account than the seller -- no transaction sent. Switch back to the seller account and use "Submit reveal now" on the listing card.`, 'skip');
+      } else {
+        log('sellerAgentLog', `Listing #${key} auto-reveal skipped -- ${result.reason}.`, 'skip');
+      }
     } catch (e) {
-      log('sellerAgentLog', `Listing #${key} auto-reveal failed -- ${e.shortMessage || e.message || e}`);
+      log('sellerAgentLog', `Listing #${key} auto-reveal failed -- ${e.shortMessage || e.message || e}`, 'error');
     }
   });
 }
@@ -1499,13 +2246,45 @@ async function rearmPendingSellerReveals() {
   const ids = Object.keys(stored);
   if (!ids.length) return;
   let rearmed = 0;
+  let revealedNow = 0;
   for (const key of ids) {
     try {
       const l = await contract.getListing(key);
-      if (Number(l.status) === 1) { // Escrowed -- still waiting on reveal
+      if (Number(l.status) === 1) { // Escrowed
+        // The purchase that unlocks this reveal has ALREADY happened -- a
+        // `contract.once(Purchased, ...)` listener only fires on a FUTURE
+        // occurrence of that event, so arming one here would wait forever
+        // for something that already fired before this listener existed.
+        // Try to submit the reveal directly, right now, instead. This only
+        // succeeds if the currently-connected wallet is the listing's
+        // seller (reveal() is onlySeller) -- if it's not (e.g. you just
+        // switched to the buyer account to complete the purchase), this
+        // will fail harmlessly and the evidence stays saved so the manual
+        // "Submit reveal" button on the listing card (or coming back here
+        // once reconnected as the seller) can finish the job.
         sellerAgentEvidence[key] = stored[key];
-        armAutoReveal(BigInt(key));
-        rearmed++;
+        try {
+          const result = await trySendReveal(key, stored[key]);
+          if (result.sent) {
+            log('sellerAgentLog', result.verified
+              ? `Listing #${key} was already purchased -- auto-reveal submitted now and VERIFIED.`
+              : `Listing #${key} reveal was submitted but the contract rejected the evidence (status: ${STATUS_NAMES[result.status]}) -- buyer refunded, your stake was slashed.`,
+              result.verified ? 'success' : 'error');
+            delete sellerAgentEvidence[key];
+            delete stored[key];
+            revealedNow++;
+          } else if (result.reason === 'wrong-signer') {
+            // Expected and harmless: this is almost always what happens right
+            // after buying, since you had to switch to the buyer account to
+            // do that. No transaction sent, no gas spent -- just a quiet skip.
+            // The "Submit reveal now" button on the card covers this once
+            // you're back on the seller account.
+          } else {
+            log('sellerAgentLog', `Listing #${key} reveal skipped -- ${result.reason}.`, 'skip');
+          }
+        } catch (e) {
+          log('sellerAgentLog', `Listing #${key} is purchased and waiting on reveal, but submitting it failed (${e.shortMessage || e.message || e}).`, 'error');
+        }
       } else if (Number(l.status) === 0) { // Listed -- still waiting on purchase
         sellerAgentEvidence[key] = stored[key];
         armAutoReveal(BigInt(key));
@@ -1517,7 +2296,16 @@ async function rearmPendingSellerReveals() {
     } catch (e) { /* listing may not exist on this contract; drop it */ delete stored[key]; }
   }
   localStorage.setItem(evidenceStorageKey(addrInput.value.trim()), JSON.stringify(stored));
-  if (rearmed) log('sellerAgentLog', `Restored ${rearmed} pending auto-reveal listener(s) from a previous session.`);
+  if (rearmed) log('sellerAgentLog', `Restored ${rearmed} pending auto-reveal listener(s) from a previous session.`, 'info');
+  if (revealedNow) { log('sellerAgentLog', `Submitted ${revealedNow} reveal(s) for already-purchased listing(s).`, 'success'); loadListings(); }
+}
+
+/** Whether we have this listing's reveal evidence saved locally (from a
+ * Seller Agent run in this browser, for the currently-set contract
+ * address) -- used to offer a manual "Submit reveal" button on the card. */
+function getStoredEvidenceFor(id) {
+  const stored = loadEvidenceFromStorage();
+  return stored[id.toString()] || null;
 }
 
 // ---------- autonomous buyer agent ----------
@@ -1528,9 +2316,9 @@ document.getElementById('agentScanBtn').addEventListener('click', withLoading(
   const wantSeverity = document.getElementById('agent-severity').value.trim().toLowerCase();
   const maxPrice = ethers.parseEther(document.getElementById('agent-maxprice').value.trim() || '0');
 
-  log('agentLog', `Rule: category~="${wantCategory}", severity="${wantSeverity}", price<=${ethers.formatEther(maxPrice)} ETH`);
+  log('agentLog', `Rule: category~="${wantCategory}", severity="${wantSeverity}", price<=${ethers.formatEther(maxPrice)} ETH`, 'info');
   const count = await contract.listingCount();
-  log('agentLog', `Scanning ${count} listing(s)...`);
+  log('agentLog', `Scanning ${count} listing(s)...`, 'info');
   let purchased = 0;
   for (let i = 0n; i < count; i++) {
     const l = await contract.getListing(i);
@@ -1540,7 +2328,7 @@ document.getElementById('agentScanBtn').addEventListener('click', withLoading(
       l.severity.toLowerCase() === wantSeverity &&
       l.price <= maxPrice;
     if (!matches) {
-      log('agentLog', `#${i}: "${l.title}" -- skip (does not match rule)`);
+      log('agentLog', `#${i}: "${l.title}" -- skip (does not match rule)`, 'skip');
       continue;
     }
     let eligible = true;
@@ -1548,35 +2336,48 @@ document.getElementById('agentScanBtn').addEventListener('click', withLoading(
       try { eligible = await contract.isEligibleBuyer(i, currentAddress); } catch (e) { eligible = true; }
     }
     if (!eligible) {
-      log('agentLog', `#${i}: "${l.title}" -- matches rule, but this wallet is not the target account (or an authorized delegate) -- skipping. The contract would reject it anyway.`);
+      log('agentLog', `#${i}: "${l.title}" -- matches rule, but this wallet is not the target account (or an authorized delegate) -- skipping. The contract would reject it anyway.`, 'skip');
       continue;
     }
-    log('agentLog', `#${i}: "${l.title}" -- MATCH. Auto-purchasing for ${ethers.formatEther(l.price)} ETH...`);
+    log('agentLog', `#${i}: "${l.title}" -- MATCH. Auto-purchasing for ${ethers.formatEther(l.price)} ETH...`, 'info');
     try {
       const tx = await contract.purchase(i, { value: l.price });
       await tx.wait();
       purchased++;
-      log('agentLog', `#${i}: purchased. tx ${tx.hash}`);
+      log('agentLog', `#${i}: purchased. tx ${tx.hash}`, 'success');
     } catch (e) {
-      log('agentLog', `#${i}: purchase failed -- ${e.shortMessage || e.message}`);
+      log('agentLog', `#${i}: purchase failed -- ${e.shortMessage || e.message}`, 'error');
     }
   }
-  log('agentLog', `Done. Auto-purchased ${purchased} listing(s).`);
+  log('agentLog', `Done. Auto-purchased ${purchased} listing(s).`, 'success');
   loadListings();
 }));
 
 // ---------- vulnerable target simulator ----------
-document.getElementById('genTargetBtn').addEventListener('click', () => {
-  // Reuses the same fixed target key as the Seller Agent, if one is set
-  // (see the Autonomous Agents tab) -- so you don't have to re-import a
-  // fresh MetaMask account for every demo pass.
-  const savedFixedKey = localStorage.getItem('bbb_fixed_target_key') || '';
-  let priv;
-  try {
-    const d = savedFixedKey ? BigInt(savedFixedKey) : 0n;
-    priv = (savedFixedKey && d !== 0n && d < ToySigner.N) ? savedFixedKey : ToySigner.randomPrivKey();
-  } catch (e) { priv = ToySigner.randomPrivKey(); }
-  const usingFixed = priv === savedFixedKey;
+// The demo target is a persistent, saved wallet by default -- generated once,
+// then reused on every click (and shared with the Seller Agent's "fixed
+// target key") so you only ever have to import one account into MetaMask,
+// instead of a fresh random one every single run. "Use a different demo
+// wallet" is the explicit opt-out when you actually want a new one.
+function runVulnSimulation(forceNew) {
+  let priv = null;
+  if (!forceNew) {
+    const saved = localStorage.getItem('bbb_fixed_target_key') || '';
+    try {
+      const d = saved ? BigInt(saved) : 0n;
+      if (saved && d !== 0n && d < ToySigner.N) priv = saved;
+    } catch (e) { /* invalid saved value, fall through to generating one */ }
+  }
+  const isNew = !priv;
+  if (!priv) priv = ToySigner.randomPrivKey();
+
+  // Persist it -- this is what makes it "the" demo wallet from now on,
+  // reused by this button AND pre-filled into the Seller Agent's fixed
+  // target key field, so both tabs stay pointed at the same account.
+  localStorage.setItem('bbb_fixed_target_key', priv);
+  fixedKeyInput.value = priv;
+  updateFixedKeyPreview();
+
   const addr = ToySigner.toyPrivToAddress(priv);
 
   const msg1 = 'transfer 10 ETH to 0xBuyer... nonce=7';
@@ -1596,30 +2397,53 @@ document.getElementById('genTargetBtn').addEventListener('click', () => {
     `msgHash2: ${h2}\nv2: ${sig2.v}\ns2: ${sig2.s}\n\n` +
     `Recommended remediation: switch to RFC6979 deterministic nonces / a vetted signing library.`;
 
+  const privMasked = '•'.repeat(Math.max(12, priv.length - 2));
   document.getElementById('vulnOutput').innerHTML = `
-    ${usingFixed ? '<p class="hint">Reusing your saved fixed target key from the Seller Agent tab.</p>' : ''}
-    <div class="finding-box">
-Synthetic target private key (demo only, never use for anything real):
-${priv}
-
-Target address (use this as "Target account" when creating a listing --
-in the demo, connect a wallet using this key as "buyer" to see the eligible-purchase flow):
-${addr}
-
-msgHash1: ${h1}
+    <div class="panel" style="margin-top:0; padding:1rem 1.1rem;">
+      <p class="hint" style="margin-top:0;">${isNew
+        ? 'Generated a new persistent demo wallet -- saved in your browser and reused automatically next time (also now set as the Seller Agent\'s fixed target key). Import it into a demo MetaMask account once and you\'re done.'
+        : 'Reusing your saved demo wallet, so there\'s nothing new to import.'}</p>
+      <div class="flex" style="justify-content:space-between; gap:0.5rem; font-size:0.85rem; color:var(--muted); flex-wrap:wrap;"><span>Target address</span><span class="mono hex-highlight">${addr}</span></div>
+      <div class="flex" style="justify-content:space-between; gap:0.5rem; font-size:0.85rem; color:var(--muted); align-items:center; flex-wrap:wrap; margin-top:0.3rem;">
+        <span>Private key</span>
+        <span class="flex" style="gap:0.5rem; align-items:center;">
+          <span class="mono hex-highlight censored-key" id="vuln-priv-span" data-revealed="0">${privMasked}</span>
+          <button type="button" class="small reveal-key-btn" id="vuln-priv-reveal">Show</button>
+        </span>
+      </div>
+      <div class="compromised-box" style="margin-top:0.85rem;">
+        <div class="k">What this simulates</div>
+        <p style="font-size:0.8rem; margin:0.35rem 0 0; color:var(--text);">
+          A reused ECDSA nonce across two signed messages -- the exact bug class this marketplace
+          exists to disclose. Use the address above as "Target account" when creating a listing;
+          connect a wallet using the private key above as the buyer to test the eligible-purchase flow.
+        </p>
+      </div>
+      <details class="step" style="margin-top:0.75rem;">
+        <summary><b>Signature evidence</b> <span class="muted">-- the raw reused-nonce signatures</span></summary>
+        <p style="white-space:pre-wrap; word-break:break-word; font-size:0.8rem;">msgHash1: ${highlightEvidence(h1)}
 v1: ${sig1.v}
-r (shared): ${sig1.r}
-s1: ${sig1.s}
+r (shared): ${highlightEvidence(sig1.r)}
+s1: ${highlightEvidence(sig1.s)}
 
-msgHash2: ${h2}
+msgHash2: ${highlightEvidence(h2)}
 v2: ${sig2.v}
-s2: ${sig2.s}
-    </div>
-    <div class="flex" style="margin-top:0.6rem;">
-      <button id="sendToRevealBtn">Send evidence to Reveal form</button>
-      <button id="sendFindingToSellBtn">Use finding text in Sell form</button>
+s2: ${highlightEvidence(sig2.s)}</p>
+      </details>
+      <div class="flex" style="margin-top:0.75rem;">
+        <button id="sendToRevealBtn">Send evidence to Reveal form</button>
+        <button id="sendFindingToSellBtn">Use finding text in Sell form</button>
+      </div>
     </div>
   `;
+  document.getElementById('vuln-priv-reveal').addEventListener('click', () => {
+    const span = document.getElementById('vuln-priv-span');
+    const btn = document.getElementById('vuln-priv-reveal');
+    const revealed = span.dataset.revealed === '1';
+    span.textContent = revealed ? privMasked : priv;
+    span.dataset.revealed = revealed ? '0' : '1';
+    btn.textContent = revealed ? 'Show' : 'Hide';
+  });
 
   document.getElementById('sendToRevealBtn').addEventListener('click', () => {
     document.getElementById('rv-h1').value = h1;
@@ -1640,7 +2464,9 @@ s2: ${sig2.s}
     document.querySelector('[data-tab="sell"]').click();
     toast('Finding sent to the Sell form.', 'info', 2600);
   });
-});
+}
+document.getElementById('genTargetBtn').addEventListener('click', () => runVulnSimulation(false));
+document.getElementById('genTargetNewBtn').addEventListener('click', () => runVulnSimulation(true));
 
 if (addrInput.value) loadListings();
 </script>
