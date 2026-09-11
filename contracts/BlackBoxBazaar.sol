@@ -85,6 +85,24 @@ contract BlackBoxBazaar {
     uint256 public constant REVEAL_WINDOW = 1 hours;
     uint256 public constant STAKE_BPS = 1000; // seller stakes 10% of price
 
+    // --- Reentrancy guard ---
+    // Every state-changing function that moves ETH already follows
+    // checks-effects-interactions (status flips to a terminal state before the
+    // external `.call` happens), so a reentrant call would find `status` already
+    // changed and revert on its own. This guard is deliberate defense-in-depth on
+    // top of that, not a substitute for it -- cheap to add, and it means a future
+    // edit that breaks the CEI ordering still fails safe.
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+    uint256 private _reentrancyStatus = _NOT_ENTERED;
+
+    modifier nonReentrant() {
+        require(_reentrancyStatus != _ENTERED, "reentrant call");
+        _reentrancyStatus = _ENTERED;
+        _;
+        _reentrancyStatus = _NOT_ENTERED;
+    }
+
     event Listed(
         uint256 indexed id,
         address indexed seller,
@@ -161,7 +179,7 @@ contract BlackBoxBazaar {
     }
 
     /// @notice Seller withdraws an unpurchased listing and reclaims their stake.
-    function cancelListing(uint256 id) external onlySeller(id) {
+    function cancelListing(uint256 id) external onlySeller(id) nonReentrant {
         Listing storage l = listings[id];
         require(l.status == Status.Listed, "not cancellable");
         l.status = Status.Cancelled;
@@ -178,7 +196,7 @@ contract BlackBoxBazaar {
     ///      being usable to buy "leverage" against someone else's wallet: only the
     ///      account the finding is actually about (or a delegate *it* named) can pay
     ///      to see it. The seller is also blocked from buying their own listing.
-    function purchase(uint256 id) external payable {
+    function purchase(uint256 id) external payable nonReentrant {
         Listing storage l = listings[id];
         require(l.status == Status.Listed, "not available");
         require(msg.value == l.price, "wrong price");
@@ -208,7 +226,7 @@ contract BlackBoxBazaar {
         bytes32 msgHash2,
         uint8 v2,
         bytes32 s2
-    ) external onlySeller(id) {
+    ) external onlySeller(id) nonReentrant {
         Listing storage l = listings[id];
         require(l.status == Status.Escrowed, "not awaiting reveal");
         require(block.timestamp <= l.revealDeadline, "reveal window passed");
@@ -244,7 +262,7 @@ contract BlackBoxBazaar {
     }
 
     /// @notice Anyone may resolve a sale the seller never revealed in time.
-    function claimTimeout(uint256 id) external {
+    function claimTimeout(uint256 id) external nonReentrant {
         Listing storage l = listings[id];
         require(l.status == Status.Escrowed, "not awaiting reveal");
         require(block.timestamp > l.revealDeadline, "reveal window not over");

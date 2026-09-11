@@ -227,6 +227,33 @@
   @keyframes shimmer { to { background-position: -220% 0; } }
   .empty-state { padding: 1.6rem; text-align:center; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted); font-size: 0.86rem; }
 
+  .walkthrough { margin: 0.9rem 0 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.65rem; }
+  .walkthrough li { font-size: 0.86rem; color: var(--muted); line-height: 1.55; }
+  .walkthrough li b { color: var(--text); }
+  .walkthrough code { color: var(--accent2); background: rgba(51,209,168,0.08); padding: 0.05rem 0.35rem; border-radius: 5px; font-size: 0.82em; }
+
+  .stats-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin-bottom: 1.1rem; }
+  .stat-tile { border: 1px solid var(--border); background: var(--panel); border-radius: 12px; padding: 0.85rem 1rem; }
+  .stat-tile .num { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-tile .lbl { font-size: 0.74rem; color: var(--muted); margin-top: 0.15rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat-tile.accent .num { color: var(--accent2); }
+
+  .activity-feed { display: flex; flex-direction: column; gap: 0.4rem; max-height: 260px; overflow-y: auto; }
+  .activity-item {
+    display: flex; align-items: baseline; gap: 0.55rem; font-size: 0.8rem;
+    padding: 0.45rem 0.55rem; border-radius: 8px; background: var(--bg2);
+    border: 1px solid var(--border); animation: cardIn 0.25s ease;
+  }
+  .activity-item .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .activity-item .dot.listed { background: var(--accent); }
+  .activity-item .dot.purchased { background: var(--warn); }
+  .activity-item .dot.verified { background: var(--accent2); }
+  .activity-item .dot.failed { background: var(--danger); }
+  .activity-item .dot.cancelled { background: var(--muted2); }
+  .activity-item .time { color: var(--muted2); font-size: 0.72rem; margin-left: auto; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .live-dot { width:7px; height:7px; border-radius:50%; background: var(--accent2); display:inline-block; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
   /* toasts */
   #toastHost { position: fixed; right: 1.1rem; bottom: 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 200; max-width: 340px; }
   .toast {
@@ -279,6 +306,38 @@
     </div>
   </section>
 
+  <details class="panel collapsible" id="walkthroughPanel" open>
+    <summary class="flex" style="justify-content:space-between;">
+      <span style="font-weight:600;font-size:0.9rem;">🧭 How this works, step by step</span>
+      <span class="muted mono" style="font-size:0.76rem;">click to collapse</span>
+    </summary>
+    <ol class="walkthrough">
+      <li>
+        <b>List.</b> Seller commits <code>keccak256(findingText)</code> plus public metadata
+        (target account, category, severity, price) and posts a 10% stake. The finding text
+        itself never touches the chain yet.
+      </li>
+      <li>
+        <b>Buy blind.</b> Only the named <code>targetAccount</code> -- or a wallet it has
+        explicitly authorized -- can pay the price into escrow. Nobody else's <code>purchase()</code>
+        call is even accepted by the contract; the eligibility check happens on-chain, not in this UI.
+      </li>
+      <li>
+        <b>Reveal.</b> Seller submits the full finding plus two ECDSA signatures sharing one
+        <code>r</code>. The contract runs <code>ecrecover</code> on both, twice -- no oracle, no
+        human referee, just math. Match &rarr; escrow (price + stake) pays the seller and the
+        finding is disclosed on-chain. Mismatch &rarr; buyer is refunded in full <i>and</i>
+        receives the seller's slashed stake.
+      </li>
+      <li>
+        <b>Timeout fallback.</b> If the seller never reveals within the window, anyone can call
+        <code>claimTimeout()</code> and it resolves exactly like a failed reveal.
+      </li>
+    </ol>
+    <p class="hint">This is the same sequence the "Simulate Vulnerable Target" tab lets you run
+      yourself end-to-end with synthetic, zero-risk demo data.</p>
+  </details>
+
   <details class="panel collapsible" id="contractPanel">
     <summary class="flex" style="justify-content:space-between;">
       <span style="font-weight:600;font-size:0.9rem;">⚙️ Contract connection</span>
@@ -307,6 +366,23 @@
   </nav>
 
   <section id="tab-market">
+    <div class="stats-strip" id="statsStrip" hidden>
+      <div class="stat-tile"><div class="num" id="stat-total">0</div><div class="lbl">Listings</div></div>
+      <div class="stat-tile"><div class="num" id="stat-active">0</div><div class="lbl">Currently listed</div></div>
+      <div class="stat-tile accent"><div class="num" id="stat-verified">0%</div><div class="lbl">Verified rate</div></div>
+      <div class="stat-tile"><div class="num" id="stat-volume">0</div><div class="lbl">Volume settled (ETH)</div></div>
+    </div>
+
+    <details class="panel collapsible" id="activityPanel" style="margin-bottom:1.1rem;">
+      <summary class="flex" style="justify-content:space-between;">
+        <span style="font-weight:600;font-size:0.9rem;"><span class="live-dot"></span>&nbsp;Live activity feed</span>
+        <span class="muted mono" style="font-size:0.76rem;">on-chain events, streamed as they happen</span>
+      </summary>
+      <div class="activity-feed" id="activityFeed" style="margin-top:0.8rem;">
+        <div class="muted" style="font-size:0.8rem;">Connect a wallet and set a contract address to start listening for events.</div>
+      </div>
+    </details>
+
     <details class="panel collapsible" id="delegatePanel" style="margin-bottom:1.1rem;">
       <summary class="flex" style="justify-content:space-between;">
         <span style="font-weight:600;font-size:0.9rem;">🤝 Manage delegate buyers</span>
@@ -404,6 +480,25 @@
 
   <section id="tab-agents" hidden>
     <div class="panel">
+      <h2>🕵️ Seller Agent <span class="muted" style="font-weight:400;font-size:0.8rem;">(autonomous)</span></h2>
+      <p class="hint">A deterministic finding-discovery-and-listing agent: it generates a synthetic
+        "vulnerable target" keypair, runs the same toy signer used in "Simulate Vulnerable Target"
+        to reproduce a genuine nonce-reuse instance, decides severity/price from simple rules, and
+        submits the listing itself -- hash-committed, stake posted, no human writing a description
+        or clicking "create." Pairs with the Buyer Agent below for a fully agent-to-agent trade with
+        no human in the loop on either side. Demo data only -- see the Safety note in the README.</p>
+      <div class="flex">
+        <div class="grow"><label>Price range (ETH)</label><input id="seller-agent-pricemin" value="0.005" /></div>
+        <div class="grow"><label>to</label><input id="seller-agent-pricemax" value="0.03" /></div>
+        <div class="grow"><label>Findings to generate</label><input id="seller-agent-count" value="1" /></div>
+      </div>
+      <div class="flex" style="margin-top:0.75rem;">
+        <button class="primary" id="sellerAgentBtn">Discover &amp; Auto-List Finding(s)</button>
+      </div>
+      <div class="status-log" id="sellerAgentLog" style="margin-top:0.75rem;">idle.</div>
+    </div>
+
+    <div class="panel" style="margin-top:1rem;">
       <h2>🤖 Buyer Agent <span class="muted" style="font-weight:400;font-size:0.8rem;">(autonomous)</span></h2>
       <p class="hint">A simple deterministic purchasing agent: scans listings and auto-purchases
         anything matching its rule <i>and</i> where the connected wallet is actually eligible to buy
@@ -610,10 +705,91 @@ function initContract() {
   const addr = addrInput.value.trim();
   if (!addr || !signer) return;
   try {
+    if (contract) { try { contract.removeAllListeners(); } catch (e) {} }
     contract = new ethers.Contract(addr, window.BLACKBOX_ABI, signer);
+    setupActivityFeed(contract);
   } catch (e) {
     console.error(e);
   }
+}
+
+// ---------- live activity feed ----------
+const EVENT_META = {
+  Listed:     { dot: 'listed',    fmt: (a) => `New listing "${a.title}" (#${a.id}) -- target ${short(a.targetAccount)}` },
+  Purchased:  { dot: 'purchased', fmt: (a) => `Listing #${a.id} purchased by ${short(a.buyer)} -- escrow open` },
+  Verified:   { dot: 'verified',  fmt: (a) => `Listing #${a.id} VERIFIED -- payout released to ${short(a.seller)}` },
+  Failed:     { dot: 'failed',    fmt: (a) => `Listing #${a.id} FAILED (${a.reason}) -- buyer refunded, seller stake slashed` },
+  Cancelled:  { dot: 'cancelled', fmt: (a) => `Listing #${a.id} cancelled by seller` },
+  BuyerAuthorized: { dot: 'listed', fmt: (a) => `${short(a.targetAccount)} authorized ${short(a.buyer)} as a delegate buyer` },
+  BuyerRevoked:    { dot: 'cancelled', fmt: (a) => `${short(a.targetAccount)} revoked ${short(a.buyer)}'s delegate access` },
+};
+function short(addr) {
+  if (!addr) return '?';
+  return `${addr.slice(0,6)}...${addr.slice(-4)}`;
+}
+function pushActivity(eventName, args, when) {
+  const feed = document.getElementById('activityFeed');
+  if (feed.firstElementChild && feed.firstElementChild.classList && feed.firstElementChild.classList.contains('muted')) {
+    feed.innerHTML = '';
+  }
+  const meta = EVENT_META[eventName];
+  if (!meta) return;
+  let text;
+  try { text = meta.fmt(args); } catch (e) { text = eventName; }
+  const row = document.createElement('div');
+  row.className = 'activity-item';
+  row.innerHTML = `<span class="dot ${meta.dot}"></span><span>${escapeHtml(text)}</span><span class="time">${when}</span>`;
+  feed.prepend(row);
+  while (feed.children.length > 40) feed.removeChild(feed.lastElementChild);
+}
+function setupActivityFeed(c) {
+  const names = ['Listed', 'Purchased', 'Verified', 'Failed', 'Cancelled', 'BuyerAuthorized', 'BuyerRevoked'];
+  document.getElementById('activityFeed').innerHTML = '<div class="muted" style="font-size:0.8rem;">Listening for events...</div>';
+
+  // Best-effort backfill of recent history -- public testnet RPCs often cap
+  // the block range for eth_getLogs, so this is wrapped defensively and
+  // simply shows nothing older if the RPC refuses.
+  (async () => {
+    try {
+      const latest = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, latest - 3000);
+      for (const name of names) {
+        const events = await c.queryFilter(c.filters[name](), fromBlock, latest);
+        for (const ev of events) {
+          pushActivity(name, ev.args, `#${ev.blockNumber}`);
+        }
+      }
+    } catch (e) {
+      console.warn('activity backfill skipped:', e.message || e);
+    }
+  })();
+
+  names.forEach(name => {
+    c.on(name, (...eventArgs) => {
+      const ev = eventArgs[eventArgs.length - 1];
+      pushActivity(name, ev.args, 'just now');
+      loadListings();
+    });
+  });
+}
+
+function computeStats(items) {
+  const strip = document.getElementById('statsStrip');
+  if (!items.length) { strip.hidden = true; return; }
+  strip.hidden = false;
+  const total = items.length;
+  const active = items.filter(x => Number(x.l.status) === 0).length;
+  const verified = items.filter(x => Number(x.l.status) === 2).length;
+  const failed = items.filter(x => Number(x.l.status) === 3).length;
+  const resolved = verified + failed;
+  const verifiedRate = resolved ? Math.round((verified / resolved) * 100) : 0;
+  const volume = items
+    .filter(x => Number(x.l.status) === 2)
+    .reduce((sum, x) => sum + x.l.price, 0n);
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-active').textContent = active;
+  document.getElementById('stat-verified').textContent = resolved ? `${verifiedRate}%` : 'n/a';
+  document.getElementById('stat-volume').textContent = Number(ethers.formatEther(volume)).toFixed(4);
 }
 
 // ---------- delegate authorization ----------
@@ -651,6 +827,7 @@ async function loadListings() {
   const root = document.getElementById('listingsRoot');
   if (!contract) {
     root.innerHTML = '<div class="empty-state">Connect a wallet and set a contract address to load listings.</div>';
+    document.getElementById('statsStrip').hidden = true;
     return;
   }
   root.innerHTML = '<div class="grid">' + '<div class="skeleton"></div>'.repeat(3) + '</div>';
@@ -695,6 +872,7 @@ async function loadListings() {
 
     root.innerHTML = html || '<div class="empty-state">Nothing to show yet.</div>';
     attachCardHandlers();
+    computeStats(items);
   } catch (e) {
     console.error(e);
     root.innerHTML = `<div class="empty-state">Couldn't load listings: ${escapeHtml(e.message || String(e))}</div>`;
@@ -869,6 +1047,99 @@ document.getElementById('revealBtn').addEventListener('click', withLoading(
     toast('reveal failed: ' + (e.shortMessage || e.message || e), 'error');
   }
 }));
+
+// ---------- autonomous seller agent ----------
+// Holds evidence for listings this agent created, keyed by listing id, so it
+// can auto-reveal the instant a purchase comes in -- no human ever types
+// reveal-form fields for an agent-created listing.
+const sellerAgentEvidence = {};
+
+document.getElementById('sellerAgentBtn').addEventListener('click', withLoading(
+  document.getElementById('sellerAgentBtn'), 'Working...', async () => {
+  if (!contract) return toast('Connect wallet + set contract address first.', 'error');
+  const priceMin = parseFloat(document.getElementById('seller-agent-pricemin').value.trim() || '0.005');
+  const priceMax = parseFloat(document.getElementById('seller-agent-pricemax').value.trim() || '0.03');
+  const n = Math.max(1, Math.min(5, parseInt(document.getElementById('seller-agent-count').value.trim() || '1', 10)));
+
+  log('sellerAgentLog', `Starting discovery run: generating ${n} synthetic nonce-reuse finding(s), price range ${priceMin}-${priceMax} ETH.`);
+
+  for (let i = 0; i < n; i++) {
+    try {
+      const priv = ToySigner.randomPrivKey();
+      const addr = ToySigner.toyPrivToAddress(priv);
+      log('sellerAgentLog', `[${i+1}/${n}] scanned synthetic target ${short(addr)} -- reused nonce detected across two demo signatures.`);
+
+      const msg1 = `transfer ${(i+1)} ETH -- session ${Date.now()}-${i}-a`;
+      const msg2 = `approve spender -- session ${Date.now()}-${i}-b`;
+      const h1 = ethers.keccak256(ethers.toUtf8Bytes(msg1));
+      const h2 = ethers.keccak256(ethers.toUtf8Bytes(msg2));
+      const reusedK = ethers.hexlify(ethers.randomBytes(32));
+      const sig1 = ToySigner.toySign(priv, h1, reusedK);
+      const sig2 = ToySigner.toySign(priv, h2, reusedK);
+
+      // Deterministic decision rule: severity and price are both derived
+      // from the target address itself (not re-rolled), so the same
+      // discovered target always yields the same listing terms.
+      const seed = BigInt(addr);
+      const severities = ['Critical', 'High', 'Medium'];
+      const severity = severities[Number(seed % 3n)];
+      const frac = Number(seed % 10000n) / 10000;
+      const priceVal = (priceMin + frac * (priceMax - priceMin)).toFixed(5);
+      const price = ethers.parseEther(priceVal);
+      const stake = price * 1000n / 10000n;
+
+      const findingText = `Target ${addr}'s signer reused an ECDSA nonce across two messages.\n` +
+        `Message 1: "${msg1}"\nMessage 2: "${msg2}"\nShared r: ${sig1.r}\n` +
+        `Auto-discovered and listed by the Seller Agent -- synthetic demo data only.`;
+      const commitmentHash = ethers.keccak256(ethers.toUtf8Bytes(findingText));
+      const title = `Auto-discovered nonce reuse (agent run, target ${short(addr)})`;
+
+      log('sellerAgentLog', `[${i+1}/${n}] rule -> severity=${severity}, price=${priceVal} ETH, stake=${ethers.formatEther(stake)} ETH. Submitting listing...`);
+      const tx = await contract.createListing(addr, price, 'ECDSA Nonce Reuse', severity, title, commitmentHash, { value: stake });
+      const receipt = await tx.wait();
+
+      let id = null;
+      for (const lg of receipt.logs) {
+        try {
+          const parsed = contract.interface.parseLog(lg);
+          if (parsed && parsed.name === 'Listed') { id = parsed.args.id; break; }
+        } catch (e) { /* not our event */ }
+      }
+      if (id === null) { log('sellerAgentLog', `[${i+1}/${n}] listed, but could not determine listing id from receipt -- auto-reveal won't be armed for it.`); continue; }
+
+      log('sellerAgentLog', `[${i+1}/${n}] listing #${id} live. Target private key (demo-only, never real): ${priv}`);
+      log('sellerAgentLog', `[${i+1}/${n}] to let a Buyer Agent purchase this listing, import that key into a demo wallet, fund it with testnet ETH, and connect as that account.`);
+
+      sellerAgentEvidence[id.toString()] = { findingText, h1, v1: sig1.v, r: sig1.r, s1: sig1.s, h2, v2: sig2.v, s2: sig2.s };
+      armAutoReveal(id);
+    } catch (e) {
+      log('sellerAgentLog', `[${i+1}/${n}] failed -- ${e.shortMessage || e.message || e}`);
+    }
+  }
+  log('sellerAgentLog', `Discovery run complete.`);
+  loadListings();
+}));
+
+function armAutoReveal(id) {
+  const key = id.toString();
+  log('sellerAgentLog', `Watching listing #${key} -- will auto-reveal the moment it's purchased, no human step required.`);
+  const filter = contract.filters.Purchased(id);
+  contract.once(filter, async (...args) => {
+    const ev = args[args.length - 1];
+    const evidence = sellerAgentEvidence[key];
+    if (!evidence) return;
+    log('sellerAgentLog', `Listing #${key} purchased by ${short(ev.args.buyer)} -- auto-revealing now.`);
+    try {
+      const tx = await contract.reveal(id, evidence.findingText, evidence.h1, evidence.v1, evidence.r, evidence.s1, evidence.h2, evidence.v2, evidence.s2);
+      await tx.wait();
+      log('sellerAgentLog', `Listing #${key} auto-reveal submitted. Check Marketplace for Verified status.`);
+      delete sellerAgentEvidence[key];
+      loadListings();
+    } catch (e) {
+      log('sellerAgentLog', `Listing #${key} auto-reveal failed -- ${e.shortMessage || e.message || e}`);
+    }
+  });
+}
 
 // ---------- autonomous buyer agent ----------
 document.getElementById('agentScanBtn').addEventListener('click', withLoading(

@@ -140,6 +140,12 @@ grant themselves access.
 - **Public disclosure loses secrecy once verified.** Once `reveal()` succeeds, the
   finding is public on-chain forever (any chain data is). The buyer paid for
   first/exclusive access before that point, not for permanent secrecy afterward.
+- **Reentrancy.** `purchase`, `reveal`, `cancelListing`, and `claimTimeout` all
+  already follow checks-effects-interactions (status flips to a terminal value
+  before the external `.call` that moves ETH), which is sufficient on its own.
+  A `nonReentrant` guard was added on top anyway as defense-in-depth, so a
+  future edit that accidentally breaks that ordering still fails safe instead
+  of silently reopening a reentrancy window.
 
 ## 5. Biggest design decision
 
@@ -228,6 +234,16 @@ npm run dev
 
 Open the printed `http://localhost:5173` URL. Paste in a deployed contract
 address (see below), connect MetaMask, and:
+- **How this works panel** -- an in-app, numbered walkthrough of the commit /
+  buy-blind / reveal / timeout sequence, open by default, so a reviewer doesn't
+  have to read this README to understand what they're looking at.
+- **Live stats strip** -- total listings, how many are currently open, the
+  verified-vs-failed rate, and cumulative volume settled, all computed live from
+  on-chain state.
+- **Live activity feed** -- subscribes to the contract's events
+  (`Listed`/`Purchased`/`Verified`/`Failed`/`Cancelled`/delegate changes) and
+  streams them into the UI as they happen, with a best-effort backfill of recent
+  history on load.
 - **Marketplace tab** -- listings are grouped by your relationship to them: listings
   that name your connected wallet as the target (or that you've been authorized to
   buy), your own listings as a seller, your past purchases, and -- shown for
@@ -237,17 +253,50 @@ address (see below), connect MetaMask, and:
   target it.
 - **Sell a Finding tab** -- create a listing (commits a hash only) and, after a
   buyer purchases, submit the reveal.
-- **Autonomous Agents tab** -- a deterministic buyer agent that scans all
-  listings and auto-purchases anything matching a simple rule (e.g. "category
-  contains ECDSA Nonce Reuse, severity Critical, price <= 0.02 ETH"), with a live
-  log of its decisions. This demonstrates agent-to-agent commerce without a human
-  clicking "buy."
+- **Autonomous Agents tab** -- two agents, meant to be run against each other:
+  - *Seller Agent*: generates a synthetic vulnerable target, reproduces a genuine
+    nonce-reuse instance with the toy signer, derives severity and price
+    deterministically from the discovered target address (not re-rolled --
+    the same target always yields the same terms), and submits the listing
+    itself. It then arms a one-time on-chain listener for that specific
+    listing's `Purchased` event and **auto-reveals the moment it's bought** --
+    no human ever fills in the reveal form for an agent-created listing.
+  - *Buyer Agent*: scans all listings and auto-purchases anything matching a
+    simple rule (e.g. "category contains ECDSA Nonce Reuse, severity Critical,
+    price <= 0.02 ETH") **and** where the connected wallet is actually eligible
+    to buy -- it pre-checks `isEligibleBuyer` so its log is honest about why it
+    skipped something, though the contract enforces eligibility regardless.
+
+  Together these demonstrate agent-to-agent commerce with no human in the loop
+  on either side of a trade, not just the buy side.
 - **Simulate Vulnerable Target tab** -- generates a synthetic keypair and uses a
   small, clearly-labeled toy signer (`frontend/toy-vulnerable-signer.js`, no
   dependencies, runs entirely in your browser) that intentionally reuses a nonce
   across two demo messages, so you have a genuine nonce-reuse finding to list and
   reveal without touching any real key. One click sends the generated evidence
   straight into the Sell/Reveal forms.
+
+### Running a full live demo (both resolution paths)
+
+Two short scripts cover both ways a sale can resolve -- useful to run once end
+to end before a live demo or submission:
+
+**Path A -- successful reveal, seller gets paid.** Use the Seller Agent (or
+"Simulate Vulnerable Target" + "Sell a Finding") to list against a *synthetic*
+target you hold the private key for. To let a second wallet actually purchase
+it, import that synthetic private key into a demo MetaMask account (it's a
+throwaway key generated in your browser for this run only -- zero real funds,
+zero real risk) and fund it with a trace of Sepolia ETH, then connect as that
+account and buy. The seller's reveal (automatic, if listed via the Seller
+Agent) will recover cleanly to the target and the listing goes `Verified`.
+
+**Path B -- failed reveal, buyer refunded and stake slashed.** List a finding
+with `targetAccount` set to a wallet you *don't* hold the key for (e.g. your
+own second MetaMask account, used as buyer). That account is eligible to
+purchase (it *is* the target), but the seller has no way to produce signatures
+that genuinely recover to it, so any reveal attempt resolves `Failed` -- the
+buyer gets `price + stake` back automatically. This exercises the slashing
+path without needing a second synthetic keypair.
 
 ## 9. Deploying to Ethereum Sepolia
 
